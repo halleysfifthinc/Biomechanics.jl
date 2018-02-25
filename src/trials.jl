@@ -38,7 +38,7 @@ end
 
 struct AnalyzedTrial
     t::Trial
-    results::Array
+    results::Dict{Symbol,Any}
 end
 
 const fs = 100
