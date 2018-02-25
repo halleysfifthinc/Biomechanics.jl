@@ -1,5 +1,7 @@
 module Biomechanics
 
-# package code goes here
+include("trials.jl")
+include("timenormalize.jl")
+include("helperfuncs.jl")
 
 end # module
