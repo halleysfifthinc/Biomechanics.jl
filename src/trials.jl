@@ -6,15 +6,16 @@ struct Trial
     path::String
     conds::Dict{Symbol,Symbol}
 
-    function Trial(path::String; subbase::String="Subject")
+    function Trial(path::String;
+                   subbase::String="Subject")
         !isabspath(path) && throw(ArgumentError("path must be absolute"))
         !ispath(path) && throw(ArgumentError("path must be existing file"))
 
         name = splitext(basename(path))[1]
 
-        m = match(r"(?<subject>$subbase \d\d", path)
+        m = match(r"[\\,\/]($subbase (?<subject>\d\d))", path)
 
-        return new(m[:subject], name, path, trialnum, Dict{Symbol,Symbol}())
+        return new(parse(m[:subject]), name, path, trialnum, Dict{Symbol,Symbol}())
     end
 
     function Trial(s,n,p,conds) 
@@ -49,7 +50,7 @@ function readtrial(trial::Trial, st::Float64; kwargs...)
     if haskey(kwargs, :cols) && !isempty(kwargs[:cols])
         cols = kwargs[:cols]
     else
-    cols = Vector{Int}()
+        cols = Vector{Int}()
         get(kwargs, :pos, true) && append!(cols, collect(2:4))
         get(kwargs, :linvel, true) && append!(cols, collect(5:7))
         get(kwargs, :ori, true) && append!(cols, collect(8:10))
