@@ -11,8 +11,8 @@ struct Trial
 
     function Trial(path::String;
                    subbase::String="Subject")
-        !isabspath(path) && throw(ArgumentError("path must be absolute"))
-        !ispath(path) && throw(ArgumentError("path must be existing file"))
+        isabspath(path) || throw(ArgumentError("path must be absolute"))
+        ispath(path) || throw(ArgumentError("path must be existing file"))
 
         name = splitext(basename(path))[1]
 
@@ -83,8 +83,8 @@ function readtrial(trial::Trial, st::Float64; kwargs...)
 end
 
 function getsessionorder(session::String)
-    !isabspath(path) && throw(ArgumentError("path must be absolute"))
-    !isdirpath(path) && throw(ArgumentError("path must be to a directory"))
+    isabspath(session) || throw(ArgumentError("path must be absolute"))
+    isdir(session) || throw(ArgumentError("path must be to a directory"))
 
     badenfs = Vector{Int}()
     trialctime = Vector{DateTime}()
