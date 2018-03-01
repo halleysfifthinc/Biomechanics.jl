@@ -34,11 +34,7 @@ function innertimenormalizestrides(trial::Trial, st::Float64; kwargs...)
 
     res = zeros((lastrhs-prerhs)*100, cols)
 
-    # This is necessary because the columns often begin and/or end with some number of
-    # NaNs, which interpolate cannot handle
-    rows = isnanbyrows(rt.data)
-
-    fill_normdims!(res, rt.data, rows, rt.events[:RHS])
+    fill_normdims!(res, rt.data, rt.events[:RHS])
 
     return (res, rt.events[:RHS])
 end
@@ -53,18 +49,14 @@ end
 
 function fill_normdims!(res::AbstractArray, 
                         data::AbstractArray,
-                        rows::AbstractVector{Int},
                         events::Vector{Int})
     (size(res,2) != size(data,2)) && throw(
         ArgumentError("`res` and `data` must have the same number of columns"))
     for i in 1:size(data,2)
         # Create interpolation object
-        itp = interpolate(data[rows,cols[i]], BSpline(Cubic(Line())), OnGrid())
+        itp = interpolate(data[:,cols[i]], BSpline(Cubic(Line())), OnGrid())
 
-        # Adjust the indexing of the interpolation object to be correct for time
-        sitp = scale(itp, rows)
-
-        fill_normstrides!(view(res, :, i), sitp, events)
+        fill_normstrides!(view(res, :, i), itp, events)
     end
 
     nothing
