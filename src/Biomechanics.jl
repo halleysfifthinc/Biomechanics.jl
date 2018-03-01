@@ -1,3 +1,5 @@
+__precompile()
+
 module Biomechanics
 
 include("trials.jl")
