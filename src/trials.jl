@@ -94,8 +94,8 @@ function readtrial(trial::Trial, st::Float64; kwargs...)
     end
     
     data = data[rhs[prerhs]:rhs[lastrhs],cols]
-    events[:RHS] = rhs[prerhs:lastrhs]
-    events[:LHS] = filter!(x -> (rhs[prerhs] <= x <= rhs[lastrhs]), lhs)
+    events[:RHS] = rhs[prerhs:lastrhs]-rhs[prerhs]+1
+    events[:LHS] = filter!(x -> (rhs[prerhs] <= x <= rhs[lastrhs]), lhs)-rhs[prerhs]+1
 
     return RawTrial(trial, events, data)
 end
