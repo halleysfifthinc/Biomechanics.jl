@@ -66,7 +66,7 @@ end
 const fs = 100
 
 function readtrial(trial::Trial, st::Float64; kwargs...)
-    kwargs == Dict(kwargs)
+    kwargs = Dict(kwargs)
 
     if haskey(kwargs, :cols) && !isempty(kwargs[:cols])
         cols = kwargs[:cols]
@@ -80,11 +80,11 @@ function readtrial(trial::Trial, st::Float64; kwargs...)
 
     data = readdlm(trial.path, '\t', Float64; skipstart=5)
     events = Dict{Symbol,Array}()
-    rhs = round.(Int,filter(!isnan,trial[:,end])*fs)
-    lhs = round.(Int,filter(!isnan,trial[:,end-1])*fs)
+    rhs = round.(Int,filter(!isnan,data[:,end])*fs)
+    lhs = round.(Int,filter(!isnan,data[:,end-1])*fs)
 
     prerhs = findfirst(x -> x >= st*fs,rhs)-1
-    lastrhs = haskey(kwargs, :numstrides) ? (length(rhs)-1) : (prerhs+kwargs[:numstrides]::Int+1)
+    lastrhs = haskey(kwargs, :numstrides) ? (prerhs+kwargs[:numstrides]::Int) : (length(rhs)-1)
 
     try
         @assert lastrhs < length(rhs)
