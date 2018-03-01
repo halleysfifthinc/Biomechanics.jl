@@ -1,5 +1,8 @@
 export Trial, RawTrial, AnalyzedTrial
 
+export readtrial,
+       getsessionorder
+
 struct Trial
     subject::Int
     name::String
