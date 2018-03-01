@@ -28,11 +28,9 @@ end
 function innertimenormalizestrides(trial::Trial, st::Float64; kwargs...)
 
     rt = readtrial(trial, st; kwargs...)
-    prerhs = rt.events[:RHS][1]
-    lastrhs = rt.events[:RHS][end]
     cols = size(rt.data,2)
 
-    res = zeros((lastrhs-prerhs)*100, cols)
+    res = zeros((length(events)-1)*100, cols)
 
     fill_normdims!(res, rt.data, rt.events[:RHS])
 
