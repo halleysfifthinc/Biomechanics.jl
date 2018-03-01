@@ -16,19 +16,16 @@ struct Trial
 
         name = splitext(basename(path))[1]
 
-        m = match(r"[\\,\/]($subbase (?<subject>\d\d))", path)
+        m = match(Regex("[\\\\,\\/]($subbase (?<subject>\\d\\d))"), path)
 
-        return new(parse(m[:subject]), name, path, trialnum, Dict{Symbol,Symbol}())
+        return new(parse(m[:subject]), name, path, Dict{Symbol,Symbol}())
     end
 
-    function Trial(s,n,p,conds) 
-        !isabspath(p) && throw(ArgumentError("path must be absolute"))
-        !ispath(p) && throw(ArgumentError("path must be existing file"))
+    function Trial(s,n,p,conds;
+                   subbase::String="Subject")
+        isabspath(p) || throw(ArgumentError("path must be absolute"))
+        ispath(p) || throw(ArgumentError("path must be existing file"))
         @assert n == splitext(basename(p))[1]
-
-        m = match(r"(?<subject>$subbase \d\d", path)
-
-        @assert s == parse(m[:subject])
 
         return new(s,n,p,conds)
     end
