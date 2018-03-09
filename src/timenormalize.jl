@@ -39,14 +39,6 @@ function timenormalize(data::AbstractArray, events::AbstractVector,len=100)
     return res
 end
 
-function isnanbyrows(x::Matrix)::UnitRange{Int64}
-    cols = 1:size(x,2)
-    sigstart = maximum(( findnext(!isnan, view(x, :,i), 1) for i in cols ))
-    sigend = minimum(( findprev(!isnan, view(x, :,i), size(x,1)) for i in cols ))
-
-    return sigstart:sigend
-end
-
 function fill_normdims!(res::AbstractArray, 
                         data::AbstractArray,
                         events::Vector{Int},
