@@ -30,7 +30,7 @@ function innertimenormalizestrides(trial::Trial, st::Float64; kwargs...)
     rt = readtrial(trial, st; kwargs...)
     cols = size(rt.data,2)
 
-    res = zeros((length(events)-1)*100, cols)
+    res = zeros((length(rt.events[:RHS])-1)*100, cols)
 
     fill_normdims!(res, rt.data, rt.events[:RHS])
 
@@ -52,7 +52,7 @@ function fill_normdims!(res::AbstractArray,
         ArgumentError("`res` and `data` must have the same number of columns"))
     for i in 1:size(data,2)
         # Create interpolation object
-        itp = interpolate(data[:,cols[i]], BSpline(Cubic(Line())), OnGrid())
+        itp = interpolate(data[:,i], BSpline(Cubic(Line())), OnGrid())
 
         fill_normstrides!(view(res, :, i), itp, events)
     end
