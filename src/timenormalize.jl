@@ -5,13 +5,18 @@ export timenormalizestrides,
 
 
 function timenormalizestrides(trial::Trial, st::Float64, en::T=nothing; kwargs...) where {T<:Void}
-    res, rhs = innertimenormalizestrides(trial, st; kwargs...)
+    rt = readtrial(trial, st; kwargs...)
+
+    res = timenormalize(rt.data, rhs)
 
     return res   
 end
 
 function timenormalizestrides(trial::Trial, st::Float64, en::T; kwargs...) where T
-    res, rhs = innertimenormalizestrides(trial, st; kwargs...)
+    rt = readtrial(trial, st; kwargs...)
+    rhs = rt.events[:RHS]
+
+    res = timenormalize(rt.data, rhs)
     
     tststr = normtime(rhs[1],rhs[2])
     pst = findfirst(x -> x >= st*fs, tststr)
@@ -25,16 +30,13 @@ function timenormalizestrides(trial::Trial, st::Float64, en::T; kwargs...) where
     return (res, pst, pen)
 end
 
-function innertimenormalizestrides(trial::Trial, st::Float64; kwargs...)
+function timenormalize(data::AbstractArray, events::AbstractVector,len=100)
+    cols = size(data,2)
+    res = zeros((length(events)-1)*len, cols)
 
-    rt = readtrial(trial, st; kwargs...)
-    cols = size(rt.data,2)
+    fill_normdims!(res, data, events; len=len)
 
-    res = zeros((length(rt.events[:RHS])-1)*100, cols)
-
-    fill_normdims!(res, rt.data, rt.events[:RHS])
-
-    return (res, rt.events[:RHS])
+    return res
 end
 
 function isnanbyrows(x::Matrix)::UnitRange{Int64}
@@ -47,32 +49,33 @@ end
 
 function fill_normdims!(res::AbstractArray, 
                         data::AbstractArray,
-                        events::Vector{Int})
+                        events::Vector{Int},
+                        len=100)
     (size(res,2) != size(data,2)) && throw(
         ArgumentError("`res` and `data` must have the same number of columns"))
     for i in 1:size(data,2)
         # Create interpolation object
-        itp = interpolate(data[:,i], BSpline(Cubic(Line())), OnGrid())
+        itp = interpolate(@view data[:,i], BSpline(Cubic(Line())), OnGrid())
 
-        fill_normstrides!(view(res, :, i), itp, events)
+        fill_normstrides!(@view res[:,i], itp, events; len=len)
     end
 
     nothing
 end
 
-function fill_normstrides!(nstr::AbstractArray, str::AbstractArray, events::Vector)
-    @assert mod(size(nstr,1),100) === 0
-    @assert size(nstr,1) === (length(events)-1)*100
+function fill_normstrides!(nstr::AbstractArray, str::AbstractArray, events::Vector,len=100)
+    @assert mod(size(nstr,1),len) === 0
+    @assert size(nstr,1) === (length(events)-1)*len
 
     # Create time normalized strides
     @inbounds for s in 1:length(events)-1
-        nstr[(1:100)+(s-1)*100] .= str[normtime(events[s],events[s+1])]
+        nstr[(1:len)+(s-1)*len] .= str[normtime(events[s],events[s+1],len=len)]
     end
 
     nothing
 end
 
-normtime(t1,t2) = linspace(t1,t2,101)[1:100]
+normtime(t1,t2,len=100) = linspace(t1,t2,len+1)[1:len]
 
 """
     limitcycle(rootdir::String, sub::Int)
