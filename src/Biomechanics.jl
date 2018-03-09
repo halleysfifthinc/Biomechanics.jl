@@ -1,4 +1,4 @@
-__precompile()
+__precompile__()
 
 module Biomechanics
 
