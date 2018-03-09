@@ -75,7 +75,10 @@ function fill_normstrides!(nstr::AbstractArray, str::AbstractArray, events::Vect
     nothing
 end
 
-normtime(t1,t2,len=100) = linspace(t1,t2,len+1)[1:len]
+function normtime(t1,t2,len=100)
+    st = (t2-t1)/len
+    t1:st:(t2-st)
+end
 
 """
     limitcycle(rootdir::String, sub::Int)
