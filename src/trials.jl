@@ -1,16 +1,24 @@
-export Trial, RawTrial, AnalyzedTrial
+export Trial,
+       RawTrial,
+       AnalyzedTrial,
+       TrialDescriptor,
+       Visual3D
 
 export readtrial,
        getsessionorder
 
-struct Trial
+abstract type TrialDescriptor end
+
+abstract type Visual3D <: TrialDescriptor end
+
+struct Trial{TD}
     subject::Int
     name::String
     path::String
     conds::Dict{Symbol,Symbol}
 
-    function Trial(path::String;
-                   subbase::String="Subject")
+    function Trial{TD}(path::String;
+                   subbase::String="Subject") where TD <: TrialDescriptor
         isabspath(path) || throw(ArgumentError("path must be absolute"))
         ispath(path) || throw(ArgumentError("path must be existing file"))
 
@@ -21,8 +29,8 @@ struct Trial
         return new(parse(m[:subject]), name, path, Dict{Symbol,Symbol}())
     end
 
-    function Trial(s,n,p,conds;
-                   subbase::String="Subject")
+    function Trial{TD}(s,n,p,conds;
+                   subbase::String="Subject") where TD <: TrialDescriptor
         isabspath(p) || throw(ArgumentError("path must be absolute"))
         ispath(p) || throw(ArgumentError("path must be existing file"))
         @assert n == splitext(basename(p))[1]
@@ -35,7 +43,7 @@ Base.show(io::IO, t::Trial) = print(io, t.subject, ", ", t.name, ", ", t.conds)
 
 function Base.show(io::IO, ::MIME"text/plain", t::Trial)
     println(io, "Subject => ", t.subject)
-    println(io, "Name => ", t.subject)
+    println(io, "Name => ", t.name)
     println(io, "Conditions:\n  ", t.conds)
 end
 
@@ -63,37 +71,28 @@ struct AnalyzedTrial
     results::Dict{Symbol,Any}
 end
 
-const fs = 100
-
-function readtrial(trial::Trial, st::Float64; kwargs...)
+function readtrial(trial::Trial{Visual3D}, st::Float64; kwargs...)
     kwargs = Dict(kwargs)
-
-    if haskey(kwargs, :cols) && !isempty(kwargs[:cols])
-        cols = kwargs[:cols]
-    else
-        cols = Vector{Int}()
-        get(kwargs, :pos, true) && append!(cols, collect(2:4))
-        get(kwargs, :linvel, true) && append!(cols, collect(5:7))
-        get(kwargs, :ori, true) && append!(cols, collect(8:10))
-        get(kwargs, :angvel, true) && append!(cols, collect(11:13))
-    end
+    fs = get(kwargs, :fs, 100)
 
     data = readdlm(trial.path, '\t', Float64; skipstart=5)
     events = Dict{Symbol,Array}()
-    rhs = round.(Int,filter(!isnan,data[:,end])*fs)
-    lhs = round.(Int,filter(!isnan,data[:,end-1])*fs)
+    lhs = round.(Int,filter(!isnan,data[:,2])*fs)
+    rhs = round.(Int,filter(!isnan,data[:,3])*fs)
 
     prerhs = findfirst(x -> x >= st*fs,rhs)-1
-    lastrhs = haskey(kwargs, :numstrides) ? (prerhs+kwargs[:numstrides]::Int) : (length(rhs)-1)
+    lastrhs = haskey(kwargs, :numstrides) ?
+                        (prerhs+kwargs[:numstrides]::Int) : (length(rhs)-1)
 
     try
         @assert lastrhs < length(rhs)
     catch
         print("\n")
-        throw(ArgumentError("Insufficient number of strides in $sub, $tname"))
+        throw(ArgumentError("Insufficient number of strides in $(trial.subject),"*
+                            "$(trial.name)"))
     end
     
-    data = data[rhs[prerhs]:rhs[lastrhs],cols]
+    data = data[rhs[prerhs]:rhs[lastrhs],get(kwargs, :cols, 4:size(data,2))]
     events[:RHS] = rhs[prerhs:lastrhs]-rhs[prerhs]+1
     events[:LHS] = filter!(x -> (rhs[prerhs] <= x <= rhs[lastrhs]), lhs)-rhs[prerhs]+1
 
