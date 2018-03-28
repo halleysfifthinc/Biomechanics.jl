@@ -27,8 +27,7 @@ Convert the events to normalized time between nt1 and nt2.
 function normalizeevents(nt1::T, nt2::T, events::AbstractVector{T}, len=100) where T
     prod(nt1 .<= events .<= nt2) || throw(DomainError("events must be between normalizing events"))
 
-    nt = zeros(len)
-    nt .= normtime(rhs[s],rhs[s+1])
+    nt = normtime(nt1,nt2, len)
     return [ findfirst(x -> x >= ev, nt) for ev in events ]
 end
 
