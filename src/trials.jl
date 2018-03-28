@@ -16,7 +16,6 @@ struct Trial{TD}
     function Trial{TD}(path::String;
                    subbase::String="Subject") where TD <: TrialDescriptor
         isabspath(path) || throw(ArgumentError("path must be absolute"))
-        ispath(path) || throw(ArgumentError("path must be existing file"))
 
         name = splitext(basename(path))[1]
 
@@ -28,7 +27,6 @@ struct Trial{TD}
     function Trial{TD}(s,n,p,conds;
                    subbase::String="Subject") where TD <: TrialDescriptor
         isabspath(p) || throw(ArgumentError("path must be absolute"))
-        ispath(p) || throw(ArgumentError("path must be existing file"))
         @assert n == splitext(basename(p))[1]
 
         return new(s,n,p,conds)
