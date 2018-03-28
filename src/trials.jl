@@ -5,14 +5,36 @@ export Trial,
 
 export readtrial
 
+"""
+    TrialDescriptor
+
+In recognition that data sources vary, and the mechanism of reading trials will differ 
+between data sources, implement a TrialDescriptor for your data.
+"""
 abstract type TrialDescriptor end
 
+"""
+    Trial{TD}
+
+A trial should describe the particulars of the data source. Trials are parameterized for
+different datasources to allow for dispatching by the Trial parameter.
+"""
 struct Trial{TD}
+    "The subject identifier"
     subject::Int
+    "The trial name"
     name::String
+    "The absolute path to the file containing the trial data"
     path::String
+    "The specific trial conditions; if unneeded, this can be empty"
     conds::Dict{Symbol,Symbol}
 
+    """
+        Trial{TD}(path[, subbase])
+
+    Create a trial and infer the subject id and trialname from the path. Create an empty set
+    of conditions.
+    """
     function Trial{TD}(path::String;
                    subbase::String="Subject") where TD <: TrialDescriptor
         isabspath(path) || throw(ArgumentError("path must be absolute"))
@@ -24,8 +46,12 @@ struct Trial{TD}
         return new(parse(m[:subject]), name, path, Dict{Symbol,Symbol}())
     end
 
-    function Trial{TD}(s,n,p,conds;
-                   subbase::String="Subject") where TD <: TrialDescriptor
+    """
+        Trial{TD}(subject, name, path[, conds])
+
+    Create a completely specified trial.
+    """
+    function Trial{TD}(s,n,p,conds=Dict{Symbol,Symbol}()) where TD <: TrialDescriptor
         isabspath(p) || throw(ArgumentError("path must be absolute"))
         @assert n == splitext(basename(p))[1]
 
@@ -42,11 +68,21 @@ function Base.show(io::IO, ::MIME"text/plain", t::Trial{TD}) where TD
     println(io, "Conditions:\n  ", t.conds)
 end
 
+"""
+    readtrial(::Trial{TD})
+
+Throws a MethodError. `readtrial` methods must be defined for a particular TrialDescriptor.
+"""
 function readtrial(::Trial{TD}) where TD
     throw(MethodError("no matching method for `readtrial(::Trial{$TD})`. "*
                       "Extend `readtrial` to add support for you TrialDescriptor."))
 end
 
+"""
+    RawTrial
+
+A RawTrial wraps the base Trial, and includes any data and events which may be of interest.
+"""
 struct RawTrial
     t::Trial
     events::Dict{Symbol,Array}
@@ -66,6 +102,11 @@ function Base.show(io::IO, ::MIME"text/plain", r::RawTrial)
     println(io, "  ", typeof(r.data), size(r.data))
 end
 
+"""
+    AnalyzedTrial
+
+Contains the results of any analysis/analyses performed on the trial.
+"""
 struct AnalyzedTrial
     t::Trial
     results::Dict{Symbol,Any}
