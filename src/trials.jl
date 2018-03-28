@@ -41,7 +41,7 @@ struct Trial{TD}
 
         name = splitext(basename(path))[1]
 
-        m = match(Regex("[\\\\,\\/]($subbase (?<subject>\\d+))"), path)
+        m = match(Regex("[\\\\,\\/]($(strip(subbase)) (?<subject>\\d+))"), path)
 
         return new(parse(m[:subject]), name, path, Dict{Symbol,Symbol}())
     end
