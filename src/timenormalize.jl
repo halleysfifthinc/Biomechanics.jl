@@ -25,6 +25,7 @@ end
 Convert the events to normalized time between nt1 and nt2.
 """
 function normalizeevents(nt1::T, nt2::T, events, len=100) where T
+    nt1 < nt2 || throw(DomainError("nt1 must be less than nt2"))
     prod(nt1 .<= events .<= nt2) || throw(DomainError("events must be between normalizing events"))
 
     nt = normtime(nt1,nt2, len)
