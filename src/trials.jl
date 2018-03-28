@@ -35,7 +35,7 @@ struct Trial{TD}
     Create a trial and infer the subject id and trialname from the path. Create an empty set
     of conditions.
     """
-    function Trial{TD}(path::String;
+    function Trial{TD}(path::String,
                    subbase::String="Subject") where TD <: TrialDescriptor
         isabspath(path) || throw(ArgumentError("path must be absolute"))
 
