@@ -1,6 +1,7 @@
 using Interpolations
 
 export timenormalize,
+       normalizeevents,
        normtime,
        avgcycle
 
@@ -16,6 +17,34 @@ function timenormalize(data::AbstractArray, events::AbstractVector,len=100)
     fill_normdims!(res, data, events, len)
 
     return res
+end
+
+"""
+    normalizeevents(nt1, nt2, events[, len])
+
+Convert the events to normalized time between nt1 and nt2.
+"""
+function normalizeevents(nt1::T, nt2::T, events::AbstractVector{T}, len=100) where T
+    prod(nt1 .<= events .<= nt2) || throw(DomainError("events must be between normalizing events"))
+
+    nt = zeros(len)
+    nt .= normtime(rhs[s],rhs[s+1])
+    return [ findfirst(x -> x >= ev, nt) for ev in events ]
+end
+
+"""
+    normalizedeventtimes(nts, events[, len])
+
+Convert the array of events to normalized time given the array of nts marking the
+normalized event bounds.
+"""
+function normalizeevents(nts::AbstractVector{T}, events::AbstractVector{T}, len=100) where T
+    nevents = similar(events)
+    for i in 1:(length(nts)-1)
+        rel = find(x -> nts[i] <= x <= nts[i+1], events)
+        @views nevents[rel] .= normalizeevents(nts[i], nts[i+1], events[rel], len)
+    end
+    return nevents
 end
 
 function fill_normdims!(res::AbstractArray,
