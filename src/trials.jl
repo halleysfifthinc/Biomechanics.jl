@@ -3,6 +3,8 @@ export Trial,
        AnalyzedTrial,
        TrialDescriptor
 
+export readtrial
+
 abstract type TrialDescriptor end
 
 struct Trial{TD}
@@ -35,10 +37,16 @@ end
 
 Base.show(io::IO, t::Trial) = print(io, t.subject, ", ", t.name, ", ", t.conds)
 
-function Base.show(io::IO, ::MIME"text/plain", t::Trial)
+function Base.show(io::IO, ::MIME"text/plain", t::Trial{TD}) where TD
+    println(io, "Trial{",TD,"}")
     println(io, "Subject => ", t.subject)
-    println(io, "Name => ", t.name)
+    println(io, "Name    => ", t.name)
     println(io, "Conditions:\n  ", t.conds)
+end
+
+function readtrial(::Trial{TD}) where TD
+    throw(MethodError("no matching method for `readtrial(::Trial{$TD})`. "*
+                      "Extend `readtrial` to add support for you TrialDescriptor."))
 end
 
 struct RawTrial
