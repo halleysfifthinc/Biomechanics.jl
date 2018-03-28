@@ -42,6 +42,7 @@ struct Trial{TD}
         name = splitext(basename(path))[1]
 
         m = match(Regex("[\\\\,\\/]($(strip(subbase)) (?<subject>\\d+))"), path)
+        m == nothing && throw(DomainError("no matching subject ID found for the given subbase and path"))
 
         return new(parse(m[:subject]), name, path, Dict{Symbol,Symbol}())
     end
@@ -72,9 +73,8 @@ end
 
 Throws a MethodError. `readtrial` methods must be defined for a particular TrialDescriptor.
 """
-function readtrial(::Trial{TD}) where TD
-    throw(MethodError("no matching method for `readtrial(::Trial{$TD})`. "*
-                      "Extend `readtrial` to add support for you TrialDescriptor."))
+function readtrial(t::Trial{TD}) where TD
+    throw(MethodError(readtrial, (t,)))
 end
 
 """
