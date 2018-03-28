@@ -53,7 +53,6 @@ struct Trial{TD}
     """
     function Trial{TD}(s,n,p,conds=Dict{Symbol,Symbol}()) where TD <: TrialDescriptor
         isabspath(p) || throw(ArgumentError("path must be absolute"))
-        @assert n == splitext(basename(p))[1]
 
         return new(s,n,p,conds)
     end
