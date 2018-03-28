@@ -24,7 +24,7 @@ end
 
 Convert the events to normalized time between nt1 and nt2.
 """
-function normalizeevents(nt1::T, nt2::T, events::AbstractVector{T}, len=100) where T
+function normalizeevents(nt1::T, nt2::T, events::Union{T, AbstractVector{T}}, len=100) where T
     prod(nt1 .<= events .<= nt2) || throw(DomainError("events must be between normalizing events"))
 
     nt = normtime(nt1,nt2, len)
