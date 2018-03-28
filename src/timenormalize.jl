@@ -1,8 +1,14 @@
 using Interpolations
 
 export timenormalize,
+       normtime,
        avgcycle
 
+"""
+    timenormalize(data, events[, len])
+
+Normalize the data (by column) to lengths of `len` bounded by the events.
+"""
 function timenormalize(data::AbstractArray, events::AbstractVector,len=100)
     cols = size(data,2)
     res = zeros((length(events)-1)*len, cols)
@@ -40,6 +46,12 @@ function fill_normstrides!(nstr::AbstractArray, str::AbstractArray, events::Vect
     nothing
 end
 
+"""
+    normtime(t1, t2[, len])
+
+Returns a range [t1,t2) with a step of the difference of t2 and t1 divided by `len`.
+`len` defaults to 100 points.
+"""
 function normtime(t1,t2,len=100)
     st = (t2-t1)/len
     t1:st:(t2-st)
