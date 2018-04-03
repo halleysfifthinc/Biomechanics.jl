@@ -21,7 +21,7 @@ different datasources to allow for dispatching by the Trial parameter.
 """
 struct Trial{TD}
     "The subject identifier"
-    subject::Int
+    subject::Integer
     "The trial name"
     name::String
     "The absolute path to the file containing the trial data"
