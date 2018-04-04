@@ -1,7 +1,48 @@
 using DSP
 
 export calcresiduals,
-	   optfc
+	   optfc,
+       demean,
+       demean!,
+       detrend,
+       detrend!
+"""
+    demean(x)
+
+Subtract the mean of `x` from `x`
+"""
+function demean(x::AbstractArray)
+    return x .- mean(x)
+end
+
+"""
+    demean!(x)
+
+Mutate `x` by subtracting its mean
+"""
+function demean!(x::AbstractArray)
+    @. x -= mean(x)
+end
+
+"""
+    detrend(y)
+
+Remove the linear trend from `y`
+"""
+function detrend(y::AbstractVector)
+    a, b = linreg(1:length(y),y)
+    @. return y - (a + b*y)
+end
+
+"""
+    detrend!(y)
+
+Mutate `y` by removing its linear trend
+"""
+function detrend!(y::AbstractVector)
+    a, b = linreg(1:length(y),y)
+    @. y -= (a + b*y)
+end
 
 """
     calcresiduals(data::Vector{Float64},
@@ -59,3 +100,4 @@ function optfc(R::Vector{Float64},
     end
     return (0.0, a, b)
 end
+
