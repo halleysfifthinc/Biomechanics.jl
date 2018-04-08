@@ -1,25 +1,25 @@
 export Trial,
        RawTrial,
        AnalyzedTrial,
-       TrialDescriptor
+       DataSource
 
 export readtrial
 
 """
-    TrialDescriptor
+    DataSource
 
 In recognition that data sources vary, and the mechanism of reading trials will differ 
-between data sources, implement a TrialDescriptor for your data.
+between data sources, implement a DataSource for your data.
 """
-abstract type TrialDescriptor end
+abstract type DataSource end
 
 """
-    Trial{TD}
+    Trial{DS}
 
 A trial should describe the particulars of the data source. Trials are parameterized for
 different datasources to allow for dispatching by the Trial parameter.
 """
-struct Trial{TD}
+struct Trial{DS}
     "The subject identifier"
     subject::Integer
     "The trial name"
@@ -30,13 +30,13 @@ struct Trial{TD}
     conds::Dict{Symbol,Symbol}
 
     """
-        Trial{TD}(path[, subbase])
+        Trial{DS}(path[, subbase])
 
     Create a trial and infer the subject id and trialname from the path. Create an empty set
     of conditions.
     """
-    function Trial{TD}(path::String,
-                   subbase::String="Subject") where TD <: TrialDescriptor
+    function Trial{DS}(path::String,
+                   subbase::String="Subject") where DS <: DataSource
         isabspath(path) || throw(ArgumentError("path must be absolute"))
 
         name = splitext(basename(path))[1]
@@ -48,11 +48,11 @@ struct Trial{TD}
     end
 
     """
-        Trial{TD}(subject, name, path[, conds])
+        Trial{DS}(subject, name, path[, conds])
 
     Create a completely specified trial.
     """
-    function Trial{TD}(s,n,p,conds=Dict{Symbol,Symbol}()) where TD <: TrialDescriptor
+    function Trial{DS}(s,n,p,conds=Dict{Symbol,Symbol}()) where DS <: DataSource
         isabspath(p) || throw(ArgumentError("path must be absolute"))
 
         return new(s,n,p,conds)
@@ -61,19 +61,19 @@ end
 
 Base.show(io::IO, t::Trial) = print(io, t.subject, ", ", t.name, ", ", t.conds)
 
-function Base.show(io::IO, ::MIME"text/plain", t::Trial{TD}) where TD
-    println(io, "Trial{",TD,"}")
+function Base.show(io::IO, ::MIME"text/plain", t::Trial{DS}) where DS
+    println(io, "Trial{",DS,"}")
     println(io, "Subject => ", t.subject)
     println(io, "Name    => ", t.name)
     println(io, "Conditions:\n  ", t.conds)
 end
 
 """
-    readtrial(::Trial{TD})
+    readtrial(::Trial{DS})
 
-Throws a MethodError. `readtrial` methods must be defined for a particular TrialDescriptor.
+Throws a MethodError. `readtrial` methods must be defined for a particular DataSource.
 """
-function readtrial(t::Trial{TD}) where TD
+function readtrial(t::Trial{DS}) where DS
     throw(MethodError(readtrial, (t,)))
 end
 
