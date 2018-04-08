@@ -19,7 +19,7 @@ abstract type DataSource end
 A trial should describe the particulars of the data source. Trials are parameterized for
 different datasources to allow for dispatching by the Trial parameter.
 """
-struct Trial{DS}
+struct Trial{DS<:DataSource}
     "The subject identifier"
     subject::Integer
     "The trial name"
