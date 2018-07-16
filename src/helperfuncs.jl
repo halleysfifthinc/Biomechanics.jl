@@ -1,13 +1,14 @@
 using DSP
 
 export calcresiduals,
-	   optfc,
+       optfc,
        demean,
        demean!,
        detrend,
        detrend!,
-       monoinc,
-       monodec
+       increasing,
+       decreasing
+
 """
     demean(x)
 
@@ -23,7 +24,7 @@ end
 Mutate `x` by subtracting its mean
 """
 function demean!(x::AbstractArray)
-    @. x -= mean(x)
+    x .-= mean(x)
 end
 
 """
@@ -47,11 +48,11 @@ function detrend!(y::AbstractVector)
 end
 
 """
-    monodec(x)
+    decreasing(x)
 
 Check if a vector is monotonically decreasing
 """
-function monodec(x::AbstractVector)
+function decreasing(x::AbstractVector)
     for i in eachindex(x)[1:end-1]
         if x[i+1] > x[i]
             return false
@@ -61,11 +62,11 @@ function monodec(x::AbstractVector)
 end
 
 """
-    monoinc(x)
+    increasing(x)
 
 Check if a vector is monotonically increasing
 """
-function monoinc(x::AbstractVector)
+function increasing(x::AbstractVector)
     for i in eachindex(x)[1:end-1]
         if x[i+1] < x[i]
             return false
@@ -73,7 +74,6 @@ function monoinc(x::AbstractVector)
     end
     return true
 end
-
 
 """
     calcresiduals(data::Vector{Float64},
