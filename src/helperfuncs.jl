@@ -7,7 +7,8 @@ export calcresiduals,
        detrend,
        detrend!,
        increasing,
-       decreasing
+       decreasing,
+       slidingwindow
 
 """
     demean(x)
@@ -73,6 +74,25 @@ function increasing(x::AbstractVector)
         end
     end
     return true
+end
+
+"""
+    slidingwindow(f, A, len)
+
+Apply function `f` to a sliding window of length `len` along `A`
+"""
+function slidingwindow(f, A::AbstractArray{T}, len) where T
+    @assert length(A) >= len
+
+    top = length(A) - len
+    res = Array{T}(undef, top + 1)
+    rg = 1:len
+
+    for i in 0:top
+        res[i+1] = f(@view(A[rg .+ i]))
+    end
+
+    return res
 end
 
 """
