@@ -15,7 +15,7 @@ export calcresiduals,
 
 Subtract the mean of `x` from `x`
 """
-function demean(x::AbstractArray)
+function demean(x)
     return x .- mean(x)
 end
 
@@ -24,7 +24,7 @@ end
 
 Mutate `x` by subtracting its mean
 """
-function demean!(x::AbstractArray)
+function demean!(x)
     x .-= mean(x)
 end
 
@@ -33,7 +33,7 @@ end
 
 Remove the linear trend from `y`
 """
-function detrend(y::AbstractVector)
+function detrend(y)
     a, b = linreg(1:length(y),y)
     @. return y - (a + b*y)
 end
@@ -43,7 +43,7 @@ end
 
 Mutate `y` by removing its linear trend
 """
-function detrend!(y::AbstractVector)
+function detrend!(y)
     a, b = linreg(1:length(y),y)
     @. y -= (a + b*y)
 end
@@ -53,12 +53,20 @@ end
 
 Check if a vector is monotonically decreasing
 """
-function decreasing(x::AbstractVector)
-    for i in eachindex(x)[1:end-1]
-        if x[i+1] > x[i]
-            return false
-        end
+function decreasing(x)
+    i = iterate(x)
+    i === nothing && return false
+    (last, state) = i
+    i = iterate(x, state)
+
+    while i !== nothing
+        (next, state) = i
+        next <= last || return false
+
+        i = iterate(x, state)
+        last = next
     end
+
     return true
 end
 
@@ -67,12 +75,20 @@ end
 
 Check if a vector is monotonically increasing
 """
-function increasing(x::AbstractVector)
-    for i in eachindex(x)[1:end-1]
-        if x[i+1] < x[i]
-            return false
-        end
+function increasing(x)
+    i = iterate(x)
+    i === nothing && return false
+    (last, state) = i
+    i = iterate(x, state)
+
+    while i !== nothing
+        (next, state) = i
+        next >= last || return false
+
+        i = iterate(x, state)
+        last = next
     end
+
     return true
 end
 
