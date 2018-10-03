@@ -30,7 +30,7 @@ struct Trial{DS<:AbstractDataSource}
     path::String
 
     "The specific trial conditions; if unneeded, this can be empty"
-    conds::Dict{Symbol,Symbol}
+    conds::Dict{Symbol}
 
     """
         Trial{DS}(path[, subbase])
@@ -47,7 +47,7 @@ struct Trial{DS<:AbstractDataSource}
         m = match(Regex("[\\\\,\\/]($(strip(subbase)) (?<subject>\\d+))"), path)
         m == nothing && throw(DomainError("no matching subject ID found for the given subbase and path"))
 
-        return new(parse(m[:subject]), name, path, Dict{Symbol,Symbol}())
+        return new(tryparse(Int, m[:subject]), name, path, Dict{Symbol,Any}())
     end
 
     """
@@ -55,7 +55,7 @@ struct Trial{DS<:AbstractDataSource}
 
     Create a completely specified trial.
     """
-    function Trial{DS}(s,n,p,conds=Dict{Symbol,Symbol}()) where DS <: AbstractDataSource
+    function Trial{DS}(s,n,p,conds=Dict{Symbol,Any}()) where DS <: AbstractDataSource
         isabspath(p) || throw(ArgumentError("path must be absolute"))
 
         return new(s,n,p,conds)
@@ -78,18 +78,20 @@ end
 """
     Segment
 
-A `Segment` is a container which includes all of, or a segment of the data from a particular `Trial`. 
+A `Segment` is a container which includes all of, or a part of the data from a particular `Trial`. 
 """
-struct Segment{DS<:AbstractDataSource,D<:DS}
+struct Segment{DS<:AbstractDataSource}
     trial::Trial{DS}
-    data::D
+    conds::Dict{Symbol}
+    data::DS
 end
 
-Base.show(io::IO, s::Segment{DS,D}) where {DS,D} = print(io, "Segment{",D,"}(",s.trial,")")
+Base.show(io::IO, s::Segment{DS}) where DS = print(io, "Segment{",DS,"}(",s.trial,",", s.conds, ",", s.data, ")")
 
-function Base.show(io::IO, ::MIME"text/plain", s::Segment{DS,D}) where {DS,D}
-    println(io, "Segment{",D,"}")
+function Base.show(io::IO, ::MIME"text/plain", s::Segment{DS}) where DS
+    println(io, "Segment{",DS,"}")
     show(io, MIME("text/plain"), s.trial)
+    show(io, MIME("text/plain"), s.conds)
     show(io, MIME("text/plain"), s.data)
 end
 
@@ -98,15 +100,15 @@ end
 
 Contains the results of any analysis/analyses performed on the trial segment.
 """
-struct AnalyzedSegment{DS<:AbstractDataSource,D<:DS}
-    s::Segment{DS,D}
-    results::Dict{Symbol,Any}
+struct AnalyzedSegment{DS<:AbstractDataSource}
+    s::Segment{DS}
+    results::Dict{Symbol}
 end
 
 Base.show(io::IO, as::AnalyzedSegment) = print(io, "AnalyzedSegment(",as.s,",", as.results,")")
 
-function Base.show(io::IO, ::MIME"text/plain", as::AnalyzedSegment{DS,D}) where {DS, D}
-    println(io, "AnalyzedSegment{",D,"}")
+function Base.show(io::IO, ::MIME"text/plain", as::AnalyzedSegment{DS}) where DS
+    println(io, "AnalyzedSegment{",DS,"}")
     show(io, MIME("text/plain"), as.s)
     show(io, MIME("text/plain"), as.results)
 end

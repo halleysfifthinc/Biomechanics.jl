@@ -69,7 +69,7 @@ function fill_normstrides!(nstr::AbstractArray, str::AbstractArray, events::Vect
 
     # Create time normalized strides
     @inbounds for s in 1:length(events)-1
-        nstr[(1:len)+(s-1)*len] .= str[normtime(events[s], events[s+1], len)]
+        nstr[(1:len).+(s-1)*len] = str[normtime(events[s], events[s+1], len)]
     end
 
     nothing
@@ -81,9 +81,10 @@ end
 Returns a range [t1,t2) with a step of the difference of t2 and t1 divided by `len`.
 `len` defaults to 100 points.
 """
-function normtime(t1,t2,len=100)
-    st = (t2-t1)/len
-    t1:st:(t2-st)
+function normtime(t1::T,t2::T,len=100) where T
+    # st = (t2-t1)/len
+    # t1:st:round(T, t2-st)
+    range(t1, stop=t2, length=len+1)[1:len]
 end
 
 """
@@ -95,12 +96,12 @@ function avgcycle(data::AbstractArray, len=100)
     mod(size(data,1),len) == 0 || throw(ArgumentError("length of data must be even"*
                                                       " multiple of len"))
 
-    N = size(data,1)
-    normal = Array{Float64,2}(len, size(data,2))
-    vnormal = Array{Float64,2}(len, size(data,2))
+    N, wid = size(data)
+    normal = similar(data, (len, wid))
+    vnormal = similar(data, (len, wid))
 
-    @inbounds for dim in 1:size(data,2)
-        @views for i in 1:len
+    @inbounds @views for dim in 1:wid
+        for i in 1:len
             normal[i,dim] = mean(data[i:len:N, dim])
             vnormal[i,dim] = std(data[i:len:N, dim])
         end

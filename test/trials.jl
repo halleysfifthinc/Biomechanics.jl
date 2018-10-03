@@ -22,13 +22,14 @@ end
 
     @testset "Segment tests" begin
         @test_nowarn d = DSTestData(Dict{Symbol,Any}(),rand(10,10))
-        @test_nowarn Segment(t,d)
+        @test_nowarn s = Segment(t, Dict{Symbol,Any}(:pecans => 3), d)
     end
 
     d = DSTestData(Dict{Symbol,Any}(),rand(10,10))
+    s = Segment(t, Dict{Symbol,Any}(:pecans => 3), d)
 
     @testset "AnalyzedSegment tests" begin
-        @test_nowarn as = AnalyzedSegment(Segment(t,d), Dict{Symbol,Any}())
+        @test_nowarn as = AnalyzedSegment(s, Dict{Symbol,Any}())
     end
 
     @test_throws MethodError readtrial(Trial{DSTest}(testpath))

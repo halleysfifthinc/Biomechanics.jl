@@ -1,4 +1,4 @@
-using DSP
+using DSP, Statistics
 
 export calcresiduals,
        optfc,
