@@ -55,7 +55,7 @@ function fill_normdims!(res::AbstractArray,
         ArgumentError("`res` and `data` must have the same number of columns"))
     for i in 1:size(data,2)
         # Create interpolation object
-        itp = interpolate(@view(data[:,i]), BSpline(Cubic(Line())), OnGrid())
+        itp = interpolate(@view(data[:,i]), BSpline(Cubic(Line(Interpolations.OnGrid()))))
 
         fill_normstrides!(@view(res[:,i]), itp, events, len)
     end
@@ -69,7 +69,7 @@ function fill_normstrides!(nstr::AbstractArray, str::AbstractArray, events::Vect
 
     # Create time normalized strides
     @inbounds for s in 1:length(events)-1
-        nstr[(1:len).+(s-1)*len] = str[normtime(events[s], events[s+1], len)]
+        nstr[(1:len).+(s-1)*len] = str(normtime(events[s], events[s+1], len))
     end
 
     nothing
