@@ -1,15 +1,17 @@
 using DSP, Statistics
 
-export calcresiduals,
-       optfc,
-       demean,
+export demean,
        demean!,
        detrend,
        detrend!,
-       xcom,
        increasing,
        decreasing,
-       slidingwindow
+       circmean,
+       circstd,
+       xcom,
+       slidingwindow,
+       calcresiduals,
+       optfc
 
 """
     demean(x)
@@ -50,26 +52,31 @@ function detrend!(y)
 end
 
 """
-    xcom(pos, vel, marker)
+    circmean(x)
 
-Compute the extrapolated center of mass.
+Compute the circular mean of `x` in radians.
 
-`pos`, `vel`, and `marker` are all assumed to be 3-dimensional variables where the order of
-dimensions is `[ML, AP, VT]`. Units are assumed to be standard SI units.
-
-See McAndrew et al. (2012)[https://doi.org/10.1016/j.jbiomech.2011.12.027]
+[1] N. I. Fisher, Statistical Analysis of Circular Data. Cambridge University Press, 1993.
 """
-function xcom(pos, vel, marker)
-    size(pos, 1) === size(vel, 1) || throw(ArgumentError("Both signals must have equal length"))
+function circmean(x)
+    s = mean(sin, x)
+    c = mean(cos, x)
 
-    tsum = sum((pos - marker).^2; dims=2)
-    l = mean(sqrt.(tsum))
-    ω₀ = sqrt(9.81/l)
+    atan(s, c)
+end
 
-    ML = pos[:,1] + vel[:,1]./ω₀
-    AP = pos[:,2] + vel[:,2]./ω₀
+"""
+    circstd(x)
 
-    return (AP, ML)
+Compute the circular standard deviation of `x` in radians.
+
+[1] N. I. Fisher, Statistical Analysis of Circular Data. Cambridge University Press, 1993.
+"""
+function circstd(x)
+    s = mean(sin, x)
+    c = mean(cos, x)
+
+    sqrt(-2*log(hypot(c, s)))
 end
 
 """
@@ -114,6 +121,29 @@ function increasing(x)
     end
 
     return true
+end
+
+"""
+    xcom(pos, vel, marker)
+
+Compute the extrapolated center of mass.
+
+`pos`, `vel`, and `marker` are all assumed to be 3-dimensional variables where the order of
+dimensions is `[ML, AP, VT]`. Units are assumed to be standard SI units.
+
+See McAndrew et al. (2012)[https://doi.org/10.1016/j.jbiomech.2011.12.027]
+"""
+function xcom(pos, vel, marker)
+    size(pos, 1) === size(vel, 1) || throw(ArgumentError("Both signals must have equal length"))
+
+    tsum = sum((pos - marker).^2; dims=2)
+    l = mean(sqrt.(tsum))
+    ω₀ = sqrt(9.81/l)
+
+    ML = pos[:,1] + vel[:,1]./ω₀
+    AP = pos[:,2] + vel[:,2]./ω₀
+
+    return (AP, ML)
 end
 
 """
