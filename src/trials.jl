@@ -22,12 +22,12 @@ struct TrialConditions
     condnames::Vector{Symbol}
     required::Vector{Symbol}
     labels_rg::Regex
-    subs::Vector{Pair{Regex,String}}
+    subst::Vector{Pair{Regex,String}}
 end
 
 function TrialConditions(conditions, labels; required=conditions, sep="[_-]")
     labels_rg = ""
-    subs = Vector{Pair{Regex,String}}(undef, 0)
+    subst = Vector{Pair{Regex,String}}(undef, 0)
 
     for cond in conditions
         labels_rg *= "(?<$cond>"
@@ -42,12 +42,12 @@ function TrialConditions(conditions, labels; required=conditions, sep="[_-]")
             if condlabel isa Pair
                 altlabels = condlabel.first isa Union{Symbol,String} ? [condlabel.first] : condlabel.first
                 filter!(label -> label != condlabel.second, altlabels)
-                push!(subs, Regex("(?:"*join(altlabels, '|')*")") => condlabel.second)
+                push!(subst, Regex("(?:"*join(altlabels, '|')*")") => condlabel.second)
             end
         end
     end
 
-    return TrialConditions(collect(conditions), collect(required), Regex(labels_rg), subs)
+    return TrialConditions(collect(conditions), collect(required), Regex(labels_rg), subst)
 end
 
 """
@@ -56,7 +56,7 @@ end
 A `Trial` describes the referenced trial. Trials are parameterized for
 different datasources to allow for dispatching by the Trial parameter.
 """
-struct Trial{S}
+struct Trial{DS<:AbstractDataSource,S}
     "The subject identifier"
     subject::S
 
@@ -70,40 +70,68 @@ struct Trial{S}
     conds::Dict{Symbol}
 end
 
-function findtrials(datasources, conditions; sid_type::Type=Int, subject_fmt=r"(?:Subject (?<subject>\d+))")
-    trials = Vector{Trial{sid_type}}()
+function findtrials(
+    DS,
+    datasources,
+    conditions;
+    sid_type::Type=Int,
+    subject_fmt=r"(?:Subject (?<subject>\d+))",
+    ignorefiles::Union{Nothing, Vector{String}}=nothing,
+    defaultconds::Union{Nothing, Dict{Symbol}}=nothing
+)
+    trials = Vector{Trial{DS,sid_type}}()
     rg = subject_fmt*r".*"*conditions.labels_rg
-    condnames = conditions.condnames
+    reqcondnames = conditions.required
+    optcondnames = setdiff(conditions.condnames, reqcondnames)
+    _defaultconds = Dict(cond => nothing for cond in conditions.condnames)
+    if !isnothing(defaultconds)
+        merge!(_defaultconds, defaultconds)
+    end
 
     for ds in datasources
         rootdir = ds.second.rootdir
         gpath = ds.second.gpath
         files = glob(gpath, rootdir)
+        if !isnothing(ignorefiles)
+            setdiff!(files, ignorefiles)
+        end
 
         for file in files
-            _file = foldl((str, pat) -> replace(str, pat), conditions.subs; init=file)
+            _file = foldl((str, pat) -> replace(str, pat), conditions.subst; init=file)
             m = match(rg, _file)
             isnothing(m) && continue
-            conds = ntuple(x -> String(m[condnames[x]]), length(condnames))
 
-            if isnothing(m[:subject]) || any(isnothing.(conds))
+            if isnothing(m[:subject]) || any(isnothing.(m[cond] for cond in reqcondnames))
                 continue
             else
                 name = splitext(basename(file))[1]
-                sid = sid_type <: Number ? tryparse(sid_type, m[:subject]) : String(m[:subject])
-                seen = findfirst(trials) do trial
+                sid = !(sid_type <: String) ? parse(sid_type, m[:subject]) : String(m[:subject])
+                seenall = findall(trials) do trial
                     trial.subject == sid &&
-                    trial.name == name &&
-                    all(getindex.(Ref(trial.conds), condnames) .== conds)
+                    all(m[cond] == get(trial.conds, cond, _defaultconds[cond])
+                        for cond in conditions.condnames)
                 end
 
-                if isnothing(seen)
-                    push!(trials, Trial{sid_type}(sid, name, Dict(ds.first => file),
-                        Dict(zip(condnames, conds))))
+                if isempty(seenall)
+                    conds = Dict(cond => String(m[cond]) for cond in reqcondnames)
+                    foreach(optcondnames) do cond
+                        if !isnothing(m[cond])
+                            conds[cond] = String(m[cond])
+                        end
+                    end
+                    push!(trials, Trial{DS,sid_type}(sid, name, Dict(ds.first => file),
+                        conds))
                 else
+                    seen = only(seenall)
                     t = trials[seen]
-                    @assert !haskey(t.paths, ds.first)
-                    t.paths[ds.first] = file
+                    if haskey(t.paths, ds.first)
+                        # println(repr(t.paths[ds.first]))
+                        # TODO: Implement `DuplicateTrialSourceError` and informative error msg
+                        @show t.paths[ds.first] file
+                        continue
+                    else
+                        t.paths[ds.first] = file
+                    end
                 end
             end
         end
@@ -112,12 +140,12 @@ function findtrials(datasources, conditions; sid_type::Type=Int, subject_fmt=r"(
     return trials
 end
 
-function Base.show(io::IO, t::Trial{S}) where S
+function Base.show(io::IO, t::Trial)
     print(io, "Trial(", repr(t.subject), ", ", repr(t.name), ", $(length(t.paths)) paths, ", t.conds, ')')
 end
 
-function Base.show(io::IO, ::MIME"text/plain", t::Trial{S}) where S
-    println(io, "Trial{",S,"}")
+function Base.show(io::IO, ::MIME"text/plain", t::Trial{DS,S}) where {DS,S}
+    println(io, "Trial{", DS, ',', S, "}")
     println(io, "  Subject: ", t.subject)
     println(io, "  Name: ", t.name)
     print(io, "  Paths:")
@@ -130,6 +158,7 @@ function Base.show(io::IO, ::MIME"text/plain", t::Trial{S}) where S
         print(io, "\n    ")
         show(io, c)
     end
+    println(io)
 end
 
 """
@@ -143,11 +172,11 @@ struct Segment{DS<:AbstractDataSource}
     data::DS
 end
 
-Base.show(io::IO, s::Segment{DS}) where DS = print(io, "Segment{",DS,"}(",s.trial,",", s.conds, ",", s.data, ")")
+Base.show(io::IO, s::Segment{DS}) where DS = print(io, "Segment{",DS,"}(",s.trial,",", s.conds, ")")
 
 function Base.show(io::IO, ::MIME"text/plain", s::Segment{DS}) where DS
-    println(io, "Segment{",DS,"}")
-    show(io, MIME("text/plain"), s.trial)
+    print(io, "Segment{",DS,"}\n  ")
+    show(io, s.trial)
     show(io, MIME("text/plain"), s.conds)
     show(io, MIME("text/plain"), s.data)
 end
@@ -166,7 +195,7 @@ Base.show(io::IO, as::AnalyzedSegment) = print(io, "AnalyzedSegment(",as.s,",", 
 
 function Base.show(io::IO, ::MIME"text/plain", as::AnalyzedSegment{DS}) where DS
     println(io, "AnalyzedSegment{",DS,"}")
-    show(io, MIME("text/plain"), as.s)
+    show(io, as.s)
     show(io, MIME("text/plain"), as.results)
 end
 
