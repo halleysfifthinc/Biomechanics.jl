@@ -5,17 +5,14 @@ export Trial, Segment, AnalyzedSegment, AbstractDataSource, DataFileType, TrialC
 
 export readtrial, findtrials
 
-"""
-    AbstractDataSource
+struct DatasetSpec{DS<:AbstractDataSource}
+    name::String
+    datasource::DS
+    pattern::String
+end
 
-In recognition that data sources vary, and the mechanism of reading trials will differ
-between data sources, implement a subtype of AbstractDataSource for your data.
-"""
-abstract type AbstractDataSource end
-
-struct DataFileType{R,P}
-    rootdir::R
-    gpath::P
+function DatasetSpec(name, datasource::DS, pattern) where DS
+    return DatasetSpec{DS}(name, datasource, pattern)
 end
 
 struct TrialConditions
@@ -23,9 +20,28 @@ struct TrialConditions
     required::Vector{Symbol}
     labels_rg::Regex
     subst::Vector{Pair{Regex,String}}
+    types::Vector{Type}
 end
 
-function TrialConditions(conditions, labels; required=conditions, sep="[_-]")
+"""
+    TrialConditions(conditions, labels; kwargs...) -> TrialConditions
+
+- `conditions` is a collection of condition names (eg `(:medication, :strength)`)
+- `labels` is a `Dict` with keys for each condition name (eg `haskey(labels, :medication)`). Each key gets a collection of the labels for all levels and any transformation desired for that condition.
+
+# Keyword arguments
+
+- `required`: The conditions which every trial must have (in the case of some trials having optional/additional conditions)
+- `types`: The (Julia) types for each condition (eg `[String, Int]`)
+- `sep`: The character separating condition labels
+"""
+function TrialConditions(
+    conditions,
+    labels;
+    required=conditions,
+    types=fill(String, length(conditions)),
+    sep="[_-]"
+)
     labels_rg = ""
     subst = Vector{Pair{Regex,String}}(undef, 0)
 
@@ -47,39 +63,45 @@ function TrialConditions(conditions, labels; required=conditions, sep="[_-]")
         end
     end
 
-    return TrialConditions(collect(conditions), collect(required), Regex(labels_rg), subst)
+    return TrialConditions(collect(conditions), collect(required), Regex(labels_rg), subst, types)
 end
 
 """
-    Trial{DS}
+    Trial{S}
 
 A `Trial` describes the referenced trial. Trials are parameterized for
-different datasources to allow for dispatching by the Trial parameter.
+different locations to allow for dispatching by the Trial parameter.
 """
-struct Trial{DS<:AbstractDataSource,S}
+struct Trial{S}
     "The subject identifier"
     subject::S
 
     "The trial name"
     name::String
 
-    "The absolute paths to any associated files containing trial data"
+    "The paths to any associated files containing trial data"
     paths::Dict{String,String}
+
+    "The source type of the `paths`"
+    sources::Dict{String,<:AbstractSource}
 
     "The specific trial conditions; if unneeded, this can be empty"
     conds::Dict{Symbol}
 end
 
+function Trial(subject::S, name, paths, sources, conds) where S
+    return Trial{S}(subject, name, paths, sources, conds)
+end
+
 function findtrials(
-    DS,
-    datasources,
-    conditions;
+    datasets::AbstractVector{DatasetSpec},
+    conditions::TrialConditions;
     sid_type::Type=Int,
     subject_fmt=r"(?:Subject (?<subject>\d+))",
     ignorefiles::Union{Nothing, Vector{String}}=nothing,
     defaultconds::Union{Nothing, Dict{Symbol}}=nothing
 )
-    trials = Vector{Trial{DS,sid_type}}()
+    trials = Vector{Trial{sid_type}}()
     rg = subject_fmt*r".*"*conditions.labels_rg
     reqcondnames = conditions.required
     optcondnames = setdiff(conditions.condnames, reqcondnames)
@@ -88,10 +110,9 @@ function findtrials(
         merge!(_defaultconds, defaultconds)
     end
 
-    for ds in datasources
-        rootdir = ds.second.rootdir
-        gpath = ds.second.gpath
-        files = glob(gpath, rootdir)
+    for set in datasets
+        pattern = set.pattern
+        files = glob(pattern)
         if !isnothing(ignorefiles)
             setdiff!(files, ignorefiles)
         end
@@ -108,29 +129,42 @@ function findtrials(
                 sid = !(sid_type <: String) ? parse(sid_type, m[:subject]) : String(m[:subject])
                 seenall = findall(trials) do trial
                     trial.subject == sid &&
-                    all(m[cond] == get(trial.conds, cond, _defaultconds[cond])
-                        for cond in conditions.condnames)
+                    all(enumerate(conditions.condnames)) do (i, cond)
+                        trialcond = get(trial.conds, cond, _defaultconds[cond])
+                        if isnothing(m[cond])
+                            return isnothing(trialcond)
+                        elseif conditions.types[i] === String
+                            return m[cond] == trialcond
+                        else
+                            parse(conditions.types[i], m[cond]) == trialcond
+                        end
+                    end
                 end
 
                 if isempty(seenall)
                     conds = Dict(cond => String(m[cond]) for cond in reqcondnames)
-                    foreach(optcondnames) do cond
+                    foreach(enumerate(optcondnames)) do (i, cond)
                         if !isnothing(m[cond])
-                            conds[cond] = String(m[cond])
+                            if conditions.types[i] === String
+                                conds[cond] = String(m[cond])
+                            else
+                                conds[cond] = parse(conditions.types[i], m[cond])
+                            end
                         end
                     end
-                    push!(trials, Trial{DS,sid_type}(sid, name, Dict(ds.first => file),
-                        conds))
+                    push!(trials, Trial(sid, name, Dict(set.name => file),
+                        Dict(set.name => set.datasource), conds))
                 else
                     seen = only(seenall)
                     t = trials[seen]
-                    if haskey(t.paths, ds.first)
-                        # println(repr(t.paths[ds.first]))
+                    if haskey(t.paths, set.name)
+                        # println(repr(t.paths[set.first]))
                         # TODO: Implement `DuplicateTrialSourceError` and informative error msg
-                        @show t.paths[ds.first] file
+                        @show t.paths[set.name] file
                         continue
                     else
-                        t.paths[ds.first] = file
+                        t.paths[set.name] = file
+                        t.sources[set.name] = set.datasource
                     end
                 end
             end
@@ -141,15 +175,16 @@ function findtrials(
 end
 
 function Base.show(io::IO, t::Trial)
-    print(io, "Trial(", repr(t.subject), ", ", repr(t.name), ", $(length(t.paths)) paths, ", t.conds, ')')
+    print(io, "Trial(", repr(t.subject), ", ", repr(t.name),
+        ", $(length(t.sources)) sources, ", t.conds, ')')
 end
 
-function Base.show(io::IO, ::MIME"text/plain", t::Trial{DS,S}) where {DS,S}
-    println(io, "Trial{", DS, ',', S, "}")
+function Base.show(io::IO, ::MIME"text/plain", t::Trial{S}) where D
+    println(io, "Trial{", S, "}")
     println(io, "  Subject: ", t.subject)
     println(io, "  Name: ", t.name)
-    print(io, "  Paths:")
-    for p in t.paths
+    print(io, "  Sources:")
+    for p in t.sources
         print(io, "\n    ")
         show(io, p)
     end
@@ -166,19 +201,32 @@ end
 
 A `Segment` is a container which includes all of, or a part of the data from a particular `Trial`.
 """
-struct Segment{DS<:AbstractDataSource}
-    trial::Trial{DS}
+struct Segment{S,ID}
+    trial::Trial{ID}
     conds::Dict{Symbol}
-    data::DS
+    source::S
+    stime::Float64 # Start time
+    etime::Float64 # End time
+    metadata::Dict{String} # Is there a better key type or container? Symbol?
+
+    function Segment{S}(trial::Trial{S}, conds::Dict{Symbol}, data) where S
+        return new(trial, merge(conds, trial.conds), data)
+    end
 end
 
-Base.show(io::IO, s::Segment{DS}) where DS = print(io, "Segment{",DS,"}(",s.trial,",", s.conds, ")")
+function Segment(trial::Trial{S}, conds::Dict{Symbol}, data) where S
+    return Segment{S}(trial, conds, data)
+end
 
-function Base.show(io::IO, ::MIME"text/plain", s::Segment{DS}) where DS
+function Base.show(io::IO, s::Segment{DS}) where DS
+    print(io, "Segment{",DS,"}(",s.trial,",", s.conds, ")")
+end
+
+function Base.show(io::IO, mimet::MIME"text/plain", s::Segment{DS}) where DS
     print(io, "Segment{",DS,"}\n  ")
     show(io, s.trial)
-    show(io, MIME("text/plain"), s.conds)
-    show(io, MIME("text/plain"), s.data)
+    show(io, mimet, s.conds)
+    show(io, mimet, s.data)
 end
 
 """
