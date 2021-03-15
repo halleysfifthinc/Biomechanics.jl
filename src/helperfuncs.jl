@@ -1,17 +1,9 @@
 using DSP, Statistics
 
-export demean,
-       demean!,
-       detrend,
-       detrend!,
-       increasing,
-       decreasing,
-       circmean,
-       circstd,
-       xcom,
-       slidingwindow,
-       calcresiduals,
-       optfc
+export demean, demean!, detrend, detrend!, centraldiff, increasing, decreasing,
+       circmean, circstd, xcom, slidingwindow, calcresiduals, optfc
+
+export ForwardBackwardPad
 
 """
     demean(x)
@@ -77,6 +69,74 @@ function circstd(x)
     c = mean(cos, x)
 
     sqrt(-2*log(hypot(c, s)))
+end
+
+struct ForwardBackwardPad; end
+
+"""
+    centraldiff(x, order; dt=1, padding=NaN)
+
+Take a numeric finite central difference of the array `x`, where `dt` is the period between
+samples in `x`, and `padding` can be `nothing` (returning an array which is 2 elements
+shorter than `x`), NaN, or `ForwardBackwardPad()` (which uses a forward or backward finite
+difference for the first and last elements, respectively, of the result).
+"""
+function centraldiff(x::AbstractVector{T}, order::Integer; dt=1, padding=NaN) where T
+    if padding === nothing
+        x′ = similar(x, T, length(x)-2)
+        _centraldiff!(x′, x, Val(order), dt)
+    else
+        x′ = similar(x)
+        _centraldiff!(x′, x, Val(order), dt, convert(T, padding))
+    end
+
+    return x′
+end
+
+@inline function _centraldiff!(x′, x, order::Val{1}, dt)
+    start = firstindex(x)
+    last = lastindex(x) - 2
+    @boundscheck (start, last) == (firstindex(x′), lastindex(x′)) || throw(BoundsError())
+
+    @inbounds @simd ivdep for i in start:last-2
+        x′[i] = (x[i+2] - x[i]) / 2dt
+    end
+
+    return nothing
+end
+
+@inline function _centraldiff!(x′, x, order::Val{2}, dt)
+    start = firstindex(x)
+    last = lastindex(x) - 2
+    @boundscheck (start, last) == (firstindex(x′), lastindex(x′)) || throw(BoundsError())
+
+    @inbounds @simd ivdep for i in start:last-2
+        x′[i] = (x[i+2] - 2x[i+1] + x[i]) / dt^2
+    end
+
+    return nothing
+end
+
+@inline function _centraldiff!(x′, x, order, dt, padding)
+    _centraldiff!(@view(x′[begin+1:end-1]), x, order, dt)
+    x′[begin] = padding
+    x′[end] = padding
+
+    return nothing
+end
+
+@inline function _centraldiff!(x′, x, order::Val{1}, dt, padding::ForwardBackwardPad)
+    _centraldiff!(@view(x′[begin+1:end-1]), x, order, dt)
+    x′[begin] = (x[begin+1] - x[begin]) / dt
+    x′[end] = (x[end] - x[end-1]) / dt
+end
+
+@inline function _centraldiff!(x′, x, order::Val{2}, dt, padding::ForwardBackwardPad)
+    _centraldiff!(@view(x′[begin+1:end-1]), x, order, dt)
+    x′[begin] = (x[begin+2] - 2*x[begin+1] + x[begin]) / dt^2
+    x′[end] = (x[end] - 2*x[end-1] + x[end-2]) / dt^2
+
+    return nothing
 end
 
 """
