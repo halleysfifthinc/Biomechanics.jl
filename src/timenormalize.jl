@@ -1,10 +1,3 @@
-using Interpolations
-
-export timenormalize,
-       normalizeevents,
-       normtime,
-       avgcycle
-
 """
     timenormalize(data, events[, len])
 

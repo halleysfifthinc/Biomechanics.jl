@@ -1,10 +1,3 @@
-using DSP, Statistics
-
-export demean, demean!, detrend, detrend!, centraldiff, increasing, decreasing,
-       circmean, circstd, xcom, slidingwindow, calcresiduals, optfc
-
-export ForwardBackwardPad
-
 """
     demean(x)
 
