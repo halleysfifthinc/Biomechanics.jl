@@ -80,7 +80,7 @@ function centraldiff(x::AbstractVector{T}, order::Integer; dt=1, padding=NaN) wh
         _centraldiff!(x′, x, Val(order), dt)
     else
         x′ = similar(x)
-        _centraldiff!(x′, x, Val(order), dt, convert(T, padding))
+        _centraldiff!(x′, x, Val(order), dt, padding)
     end
 
     return x′
