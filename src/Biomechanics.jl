@@ -10,5 +10,6 @@ export ForwardBackwardPad
 
 include("timenormalize.jl")
 include("helperfuncs.jl")
+include("stepmetrics.jl")
 
 end # module
