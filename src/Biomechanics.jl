@@ -14,7 +14,6 @@ export continuousphase, demean, demean!, detrend, detrend!, centraldiff
 # timenormalize.jl
 export timenormalize, timestoindices, normtime, limitcycle
 
-@reexport using .SpatiotemporalMetrics
 
 # gaitstability.jl
 export xcom
@@ -28,7 +27,10 @@ include("utils.jl")
 include("reductions.jl")
 include("transformations.jl")
 include("timenormalize.jl")
+
 include("stepmetrics.jl")
+@reexport using .SpatiotemporalMetrics
+
 include("gaitstability.jl")
 include("helperfuncs.jl")
 

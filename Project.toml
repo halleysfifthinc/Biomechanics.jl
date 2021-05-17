@@ -1,7 +1,7 @@
 name = "Biomechanics"
 uuid = "6f07b801-2c6f-57cd-b605-0571f3a6b84e"
 authors = ["Allen Hill <allenofthehills@gmail.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
@@ -13,6 +13,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 [compat]
 DSP = "0.6"
 Interpolations = "0.13"
+Reexport = "1.0"
 julia = "1.5"
 
 [extras]
