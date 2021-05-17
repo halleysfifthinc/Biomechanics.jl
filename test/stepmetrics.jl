@@ -1,5 +1,5 @@
 using Statistics, Biomechanics.SpatiotemporalMetrics, Random
-using .SpatiotemporalMetrics: interleave
+using Biomechanics: interleave
 
 Random.seed!(0xBEEF)
 

@@ -49,6 +49,7 @@ Running:
 module SpatiotemporalMetrics
 
 using ..Biomechanics, LinearAlgebra
+using ..Biomechanics: _rotating_diff
 
 export beginwithevent, stridetimes, steptimes, swingstance, swing, stance, singlesupport,
     doublesupport, steplength, stepwidth
