@@ -48,7 +48,7 @@ Running:
 """
 module SpatiotemporalMetrics
 
-using LinearAlgebra
+using ..Biomechanics, LinearAlgebra
 
 export beginwithevent, stridetimes, steptimes, swingstance, swing, stance, singlesupport,
     doublesupport, steplength, stepwidth
@@ -265,82 +265,12 @@ function doublesupport(;lfs, lfo, rfs, rfo, normalize=true)
     return ds
 end
 
-function intervals(a::AbstractVector{T}; step=one(T)) where T
-    ranges = Vector{typeof(first(a):step:a[2])}()
-    for i in 1:(length(a)-1)
-        push!(ranges, a[i]:step:a[i+1])
-    end
-
-    return ranges
-end
-
-function intervals(a::AbstractVector{T}, b::AbstractVector{T}; step=one(T)) where T
-    ranges = Vector{typeof(first(a):step:first(b))}()
-
-    firstbi = searchsortedfirst(b, first(a))
-
-    bi = firstbi
-    ai = firstindex(a)
-    while bi < lastindex(b) && ai < lastindex(a)
-        bi = searchsortedfirst(b, a[ai], bi, lastindex(b), Base.Order.Forward)
-        ai = searchsortedlast(a, b[bi], ai, lastindex(a), Base.Order.Forward)
-        push!(ranges, a[ai]:step:b[bi])
-
-        bi += 1
-        ai += 1
-    end
-
-    return ranges
-end
-
 function swingintervals(fs::AbstractVector{T}, fo::AbstractVector{T}; step=one(T)) where T
     intervals(fo, fs; step)
 end
 
 function stanceintervals(fs::AbstractVector{T}, fo::AbstractVector{T}; step=one(T)) where T
     intervals(fs, fo; step)
-end
-
-function _rotating_diff(vectors::Vararg{<:AbstractVector{T},N};
-    i=argmin(first.(vectors))
-) where {T,N}
-    diffed = ntuple(x -> similar(Vector{T}, (0,)), N)
-    iterators::Vector{Union{Nothing,Tuple{T,Any}}} = collect(iterate.(vectors))
-
-    nextvector = i
-    currvector = nextvector
-    nextvector = mod1(nextvector+1, N)
-
-    while !isnothing(iterators[nextvector])
-        cval, cstate = iterators[currvector]
-        nval, nstate = iterators[nextvector]
-        iterators[currvector] = iterate(vectors[currvector], cstate)
-
-        push!(diffed[currvector], nval - cval)
-        currvector = nextvector
-        nextvector = mod1(nextvector+1, N)
-    end
-
-    return diffed
-end
-
-function interleave(vectors::Vararg{<:AbstractVector{T},N}) where {T,N}
-    minlen = minimum(length.(vectors))
-    arr = Vector{T}(undef, N*minlen)
-    iterators::Vector{Union{Nothing,Tuple{T,Any}}} = collect(iterate.(vectors))
-
-    currvector = 1
-    i = 0
-
-    while !isnothing(iterators[currvector])
-        cval, cstate = iterators[currvector]
-        iterators[currvector] = iterate(vectors[currvector], cstate)
-
-        arr[i += 1] = cval
-        currvector = mod1(currvector+1, N)
-    end
-
-    return arr
 end
 
 end

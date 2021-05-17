@@ -1,14 +1,35 @@
 module Biomechanics
 
-using DSP, Interpolations, Statistics, LinearAlgebra
+using Reexport, DSP, Interpolations, Statistics, LinearAlgebra
 
-export timenormalize, timestoindices, normtime, limitcycle, demean, demean!, detrend,
-       detrend!, centraldiff, circmean, circstd, xcom, calcresiduals, optfc
+# utils.jl
+export intervals
+
+#reductions.jl
+export circmean, circstd, mean_std_range, avgextrema, intervalextrema
+
+# transformations.jl
+export continuousphase, demean, demean!, detrend, detrend!, centraldiff
+
+# timenormalize.jl
+export timenormalize, timestoindices, normtime, limitcycle
+
+@reexport using .SpatiotemporalMetrics
+
+# gaitstability.jl
+export xcom
+
+# helperfuncs.jl
+export calcresiduals, optfc
 
 export ForwardBackwardPad
 
+include("utils.jl")
+include("reductions.jl")
+include("transformations.jl")
 include("timenormalize.jl")
-include("helperfuncs.jl")
 include("stepmetrics.jl")
+include("gaitstability.jl")
+include("helperfuncs.jl")
 
 end # module

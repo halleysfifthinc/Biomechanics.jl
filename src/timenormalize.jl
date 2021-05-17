@@ -3,7 +3,7 @@
 
 Normalize the first dimension to lengths of `len` bounded by the events.
 """
-function timenormalize(data::AbstractArray{T}, events::AbstractVector{Int}, len::Int=100)
+function timenormalize(data::AbstractArray{T}, events::AbstractVector{Int}, len::Int=100) where T
     dims = size(data)
     res = Array{T}(undef, (length(events)-1)*len, dims[2:end]...)
 
