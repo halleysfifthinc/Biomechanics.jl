@@ -2,7 +2,7 @@ module Biomechanics
 
 using DSP, Interpolations, Statistics, LinearAlgebra
 
-export timenormalize, normalizeeevents, normtime, avgcycle, demean, demean!, detrend,
+export timenormalize, timestoindices, normtime, avgcycle, demean, demean!, detrend,
        detrend!, centraldiff, increasing, decreasing, circmean, circstd, xcom,
        slidingwindow, calcresiduals, optfc
 

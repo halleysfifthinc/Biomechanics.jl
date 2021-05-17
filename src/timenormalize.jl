@@ -1,43 +1,15 @@
 """
-    timenormalize(data, events[, len])
+    timenormalize(data, events::AbstractVector{Int}[, len=100])
 
-Normalize the data (by column) to lengths of `len` bounded by the events.
+Normalize the first dimension to lengths of `len` bounded by the events.
 """
-function timenormalize(data::AbstractArray, events::AbstractVector,len=100)
-    cols = size(data,2)
-    res = zeros((length(events)-1)*len, cols)
+function timenormalize(data::AbstractArray{T}, events::AbstractVector,len=100)
+    dims = size(data)
+    res = Array{T}(undef, (length(events)-1)*len, dims[2:end]...)
 
     fill_normdims!(res, data, events, len)
 
     return res
-end
-
-"""
-    normalizeevents(nt1, nt2, events[, len])
-
-Convert the events to normalized time between nt1 and nt2.
-"""
-function normalizeevents(nt1::T, nt2::T, events, len=100) where T
-    nt1 < nt2 || throw(DomainError("nt1 must be less than nt2"))
-    prod(nt1 .<= events .<= nt2) || throw(DomainError("events must be between normalizing events"))
-
-    nt = normtime(nt1,nt2, len)
-    return [ findfirst(x -> x >= ev, nt) for ev in events ]
-end
-
-"""
-    normalizedeventtimes(nts, events[, len])
-
-Convert the array of events to normalized time given the array of nts marking the
-normalized event bounds.
-"""
-function normalizeevents(nts::AbstractVector{T}, events::AbstractVector{T}, len=100) where T
-    nevents = similar(events)
-    for i in 1:(length(nts)-1)
-        rel = find(x -> nts[i] <= x <= nts[i+1], events)
-        @views nevents[rel] .= normalizeevents(nts[i], nts[i+1], events[rel], len)
-    end
-    return nevents
 end
 
 function fill_normdims!(res::AbstractArray,
@@ -69,10 +41,64 @@ function fill_normstrides!(nstr::AbstractArray, str::AbstractArray, events::Vect
 end
 
 """
-    normtime(t1, t2[, len])
+    timestoindices(t1::Real, t2::Real, times[, len=100])
 
-Returns a range [t1,t2) with a step of the difference of t2 and t1 divided by `len`.
-`len` defaults to 100 points.
+Find the equivalent indices for `times` when the times `t1` and `t2` match the `begin` and
+`end + 1` of an array of length `len`.
+
+This is useful when an array has been timenormalized using `basetimes` as the normalizing events, but when the location of `times` in the normalized array is also needed.
+
+# Examples
+```jldoctest
+julia> normedarray = timenormalize(collect(.01:.01:3), [132, 246])
+100-element Vector{Float64}:
+ 1.32
+ 1.3314
+ 1.3428
+ 1.3541999999999996
+[...]
+
+julia> times = [1.56, 2.0]
+2-element Vector{Float64}:
+ 1.56
+ 2.0
+
+julia> idx = timestoindices(1.32, 2.46, times)
+2-element Vector{Int64}:
+ 23
+ 61
+
+julia> isapprox(normedarray[idx], times; atol=.02)
+true
+```
+"""
+function timestoindices(t1::T, t2::T, events, len=100) where T <: Real
+    t1 < t2 || throw(DomainError("t1 must be less than t2"))
+    all(t1 .<= events .<= t2) || throw(DomainError("events must be between normalizing events"))
+
+    nt = normtime(t1, t2, len)
+    return [ findfirst(≥(ev), nt) for ev in events ]
+end
+
+"""
+    timestoindices(basetimes::AbstractVector{<:Real}, times[, len=100])
+
+Find the equivalent indices for elements in `times` which are between `basetimes[i]` and
+`basetimes[i+1]` which match the `begin` and `end + 1` of an array of length `len` for all successive pairs in `basetimes`.
+"""
+function timestoindices(basetimes::AbstractVector{T}, times::AbstractVector{T}, len=100) where T
+    ntimes = similar(times)
+    for i in 1:(length(nts)-1)
+        rel = findall(x -> nts[i] ≤ x ≤ nts[i+1], times)
+        @views ntimes[rel] .= timestoindices(nts[i], nts[i+1], times[rel], len)
+    end
+    return ntimes
+end
+
+"""
+    normtime(t1, t2[, len=100])
+
+Returns a range [t1,t2) with a length of `len`.
 """
 function normtime(t1::T,t2::T,len=100) where T
     # st = (t2-t1)/len
