@@ -139,50 +139,6 @@ end
 end
 
 """
-    decreasing(x)
-
-Check if a vector is monotonically decreasing
-"""
-function decreasing(x)
-    i = iterate(x)
-    i === nothing && return false
-    (last, state) = i
-    i = iterate(x, state)
-
-    while i !== nothing
-        (next, state) = i
-        next <= last || return false
-
-        i = iterate(x, state)
-        last = next
-    end
-
-    return true
-end
-
-"""
-    increasing(x)
-
-Check if a vector is monotonically increasing
-"""
-function increasing(x)
-    i = iterate(x)
-    i === nothing && return false
-    (last, state) = i
-    i = iterate(x, state)
-
-    while i !== nothing
-        (next, state) = i
-        next >= last || return false
-
-        i = iterate(x, state)
-        last = next
-    end
-
-    return true
-end
-
-"""
     xcom(pos, vel, marker)
 
 Compute the extrapolated center of mass.
