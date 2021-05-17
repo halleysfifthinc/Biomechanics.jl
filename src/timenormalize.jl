@@ -3,7 +3,7 @@
 
 Normalize the first dimension to lengths of `len` bounded by the events.
 """
-function timenormalize(data::AbstractArray{T}, events::AbstractVector,len=100)
+function timenormalize(data::AbstractArray{T}, events::AbstractVector{Int}, len::Int=100)
     dims = size(data)
     res = Array{T}(undef, (length(events)-1)*len, dims[2:end]...)
 
@@ -12,10 +12,7 @@ function timenormalize(data::AbstractArray{T}, events::AbstractVector,len=100)
     return res
 end
 
-function fill_normdims!(res::AbstractArray,
-                        data::AbstractArray,
-                        events::Vector{Int},
-                        len=100)
+function fill_normdims!(res, data, events::AbstractVector{Int}, len::Int=100)
     (size(res,2) != size(data,2)) && throw(
         ArgumentError("`res` and `data` must have the same number of columns"))
     for i in 1:size(data,2)
@@ -28,7 +25,7 @@ function fill_normdims!(res::AbstractArray,
     nothing
 end
 
-function fill_normstrides!(nstr::AbstractArray, str::AbstractArray, events::Vector,len=100)
+function fill_normstrides!(nstr, str, events::AbstractVector{Int}, len::Int=100)
     @assert mod(size(nstr,1),len) === 0
     @assert size(nstr,1) === (length(events)-1)*len
 
@@ -72,7 +69,7 @@ julia> isapprox(normedarray[idx], times; atol=.02)
 true
 ```
 """
-function timestoindices(t1::T, t2::T, events, len=100) where T <: Real
+function timestoindices(t1::T, t2::T, events, len::Int=100) where T <: Real
     t1 < t2 || throw(DomainError("t1 must be less than t2"))
     all(t1 .<= events .<= t2) || throw(DomainError("events must be between normalizing events"))
 
@@ -86,7 +83,7 @@ end
 Find the equivalent indices for elements in `times` which are between `basetimes[i]` and
 `basetimes[i+1]` which match the `begin` and `end + 1` of an array of length `len` for all successive pairs in `basetimes`.
 """
-function timestoindices(basetimes::AbstractVector{T}, times::AbstractVector{T}, len=100) where T
+function timestoindices(basetimes::AbstractVector{T}, times::AbstractVector{T}, len::Int=100) where T
     ntimes = similar(times)
     for i in 1:(length(nts)-1)
         rel = findall(x -> nts[i] ≤ x ≤ nts[i+1], times)
@@ -100,31 +97,36 @@ end
 
 Returns a range [t1,t2) with a length of `len`.
 """
-function normtime(t1::T,t2::T,len=100) where T
+function normtime(t1, t2, len::Int=100)
     # st = (t2-t1)/len
     # t1:st:round(T, t2-st)
     range(t1, stop=t2, length=len+1)[1:len]
 end
 
 """
-    avgcycle(data, len=100)
+    limitcycle(data, [events::AbstractVector{Int}, len=100])
 
-Calculate the ensemble average and stdev of `data` assuming a normalized length of `len`
+Calculate the ensemble average and stdev of `data` with a normalized length of `len`
 """
-function avgcycle(data::AbstractArray, len=100)
-    mod(size(data,1),len) == 0 || throw(ArgumentError("length of data must be even"*
-                                                      " multiple of len"))
+function limitcycle(data, len::Int=100)
+    mod(size(data,1),len) == 0 ||
+        throw(ArgumentError("length of data must be even multiple of len"))
 
     N, wid = size(data)
-    normal = similar(data, (len, wid))
-    vnormal = similar(data, (len, wid))
+    ensemble_avg = similar(data, (len, wid))
+    ensemble_std = similar(data, (len, wid))
 
     @inbounds @views for dim in 1:wid
         for i in 1:len
-            normal[i,dim] = mean(data[i:len:N, dim])
-            vnormal[i,dim] = std(data[i:len:N, dim])
+            ensemble_avg[i,dim] = mean(data[i:len:N, dim])
+            ensemble_std[i,dim] = std(data[i:len:N, dim])
         end
     end
 
-    return (normal, vnormal)
+    return (ensemble_avg, ensemble_std)
+end
+
+function limitcycle(data, events::AbstractVector{Int}, len::Int=100)
+    normed = timenormalize(data, events, len)
+    limitcycle(data, len)
 end
