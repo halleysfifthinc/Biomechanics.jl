@@ -162,25 +162,6 @@ function xcom(pos, vel, marker)
 end
 
 """
-    slidingwindow(f, A, len)
-
-Apply function `f` to a sliding window of length `len` along `A`
-"""
-function slidingwindow(f, A::AbstractArray{T}, len) where T
-    @assert length(A) >= len
-
-    top = length(A) - len
-    res = Array{T}(undef, top + 1)
-    rg = 1:len
-
-    for i in 0:top
-        res[i+1] = f(@view(A[rg .+ i]))
-    end
-
-    return res
-end
-
-"""
     calcresiduals(data::Vector{Float64},
                     fs::Int64,
                     fc::Vector{Float64}=collect(.05:.05:25.0))::Vector{Float64}
