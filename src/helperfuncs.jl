@@ -16,14 +16,20 @@ function demean!(x)
     x .-= mean(x)
 end
 
+# From @dmbates in https://discourse.julialang.org/t/efficient-way-of-doing-linear-regression/31232/28
+function _linreg(x::AbstractVector{T}, y::AbstractVector{T}) where {T<:AbstractFloat}
+    (N = length(x)) == length(y) || throw(DimensionMismatch())
+    ldiv!(cholesky!(Symmetric([T(N) sum(x); zero(T) sum(abs2, x)], :U)), [sum(y), dot(x, y)])
+end
+
 """
     detrend(y)
 
 Remove the linear trend from `y`
 """
 function detrend(y)
-    a, b = linreg(1:length(y),y)
-    @. return y - (a + b*y)
+    β = linreg(1:length(y),y)
+    @. return y - (β[1] + β[2]*y)
 end
 
 """
@@ -33,7 +39,7 @@ Mutate `y` by removing its linear trend
 """
 function detrend!(y)
     a, b = linreg(1:length(y),y)
-    @. y -= (a + b*y)
+    @. y -= β[1] + β[2]*y
 end
 
 """
