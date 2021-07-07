@@ -66,14 +66,15 @@ end
 struct ForwardBackwardPad; end
 
 """
-    centraldiff(x, order; dt=1, padding=NaN)
+    centraldiff(x, order=1; dt=1, padding=NaN)
 
-Take a numeric finite central difference of the array `x`, where `dt` is the period between
-samples in `x`, and `padding` can be `nothing` (returning an array which is 2 elements
-shorter than `x`), NaN, or `ForwardBackwardPad()` (which uses a forward or backward finite
-difference for the first and last elements, respectively, of the result).
+Take a numeric finite central difference along the first dimension of the array `x`, where
+`dt` is the period between samples in `x`, and `padding` can be `nothing` (returning an
+array which is 2 elements shorter than `x`), NaN, or `ForwardBackwardPad()` (which uses a
+forward or backward finite difference for the first and last elements, respectively, of the
+result).
 """
-function centraldiff(x::AbstractVector{T}, order::Integer; dt=1, padding=NaN) where T
+function centraldiff(x::AbstractVector{T}, order::Integer=1; dt=1, padding=NaN) where T
     if padding === nothing
         x′ = similar(x, T, length(x)-2)
         _centraldiff!(x′, x, Val(order), dt)
@@ -85,31 +86,28 @@ function centraldiff(x::AbstractVector{T}, order::Integer; dt=1, padding=NaN) wh
     return x′
 end
 
-@inline function _centraldiff!(x′, x, order::Val{1}, dt)
-    start = firstindex(x)
-    last = lastindex(x) - 2
-    @boundscheck (start, last) == (firstindex(x′), lastindex(x′)) || throw(BoundsError())
-
-    @inbounds @simd ivdep for i in start:last-2
-        x′[i] = (x[i+2] - x[i]) / 2dt
+function centraldiff(
+    x::Matrix{T}, order::Integer=1; dt=1, padding=NaN
+) where T
+    sz = size(x)
+    dims=2
+    if padding === nothing
+        sz = ntuple(i -> i == 1 ? sz[1] - 2 : sz[i], length(sz))
+        x′ = similar(x, sz)
+        foreach(eachslice(x′; dims), eachslice(x; dims)) do vx′, vx
+            _centraldiff!(vx′, vx, Val(order), dt)
+        end
+    else
+        x′ = similar(x, sz)
+        foreach(eachslice(x′; dims), eachslice(x; dims)) do vx′, vx
+            _centraldiff!(vx′, vx, Val(order), dt, padding)
+        end
     end
 
-    return nothing
+    return x′
 end
 
-@inline function _centraldiff!(x′, x, order::Val{2}, dt)
-    start = firstindex(x)
-    last = lastindex(x) - 2
-    @boundscheck (start, last) == (firstindex(x′), lastindex(x′)) || throw(BoundsError())
-
-    @inbounds @simd ivdep for i in start:last-2
-        x′[i] = (x[i+2] - 2x[i+1] + x[i]) / dt^2
-    end
-
-    return nothing
-end
-
-@inline function _centraldiff!(x′, x, order, dt, padding)
+@inline function _centraldiff!(x′::AbstractVector, x::AbstractVector, order, dt, padding)
     _centraldiff!(@view(x′[begin+1:end-1]), x, order, dt)
     x′[begin] = padding
     x′[end] = padding
@@ -117,16 +115,40 @@ end
     return nothing
 end
 
-@inline function _centraldiff!(x′, x, order::Val{1}, dt, padding::ForwardBackwardPad)
+@inline function _centraldiff!(x′::AbstractVector, x, order::Val{1}::AbstractVector, dt, padding::ForwardBackwardPad)
     _centraldiff!(@view(x′[begin+1:end-1]), x, order, dt)
     x′[begin] = (x[begin+1] - x[begin]) / dt
     x′[end] = (x[end] - x[end-1]) / dt
 end
 
-@inline function _centraldiff!(x′, x, order::Val{2}, dt, padding::ForwardBackwardPad)
+@inline function _centraldiff!(x′::AbstractVector, x::AbstractVector, order::Val{2}, dt, padding::ForwardBackwardPad)
     _centraldiff!(@view(x′[begin+1:end-1]), x, order, dt)
     x′[begin] = (x[begin+2] - 2*x[begin+1] + x[begin]) / dt^2
     x′[end] = (x[end] - 2*x[end-1] + x[end-2]) / dt^2
+
+    return nothing
+end
+
+@inline function _centraldiff!(x′::AbstractVector, x::AbstractVector, order::Val{1}, dt)
+    start = firstindex(x)
+    last = lastindex(x) - 2
+    @boundscheck (start, last) == (firstindex(x′), lastindex(x′)) || throw(BoundsError())
+
+    @inbounds @simd ivdep for i in start:last
+        x′[i] = (x[i+2] - x[i]) / 2dt
+    end
+
+    return nothing
+end
+
+@inline function _centraldiff!(x′::AbstractVector, x::AbstractVector, order::Val{2}, dt)
+    start = firstindex(x)
+    last = lastindex(x) - 2
+    @boundscheck (start, last) == (firstindex(x′), lastindex(x′)) || throw(BoundsError())
+
+    @inbounds @simd ivdep for i in start:last
+        x′[i] = (x[i+2] - 2x[i+1] + x[i]) / dt^2
+    end
 
     return nothing
 end
