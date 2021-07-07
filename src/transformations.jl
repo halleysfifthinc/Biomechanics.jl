@@ -115,7 +115,7 @@ end
     return nothing
 end
 
-@inline function _centraldiff!(x′::AbstractVector, x, order::Val{1}::AbstractVector, dt, padding::ForwardBackwardPad)
+@inline function _centraldiff!(x′::AbstractVector, x::AbstractVector, order::Val{1}, dt, padding::ForwardBackwardPad)
     _centraldiff!(@view(x′[begin+1:end-1]), x, order, dt)
     x′[begin] = (x[begin+1] - x[begin]) / dt
     x′[end] = (x[end] - x[end-1]) / dt
