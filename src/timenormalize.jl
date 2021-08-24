@@ -5,6 +5,8 @@ Normalize the first dimension to lengths of `len` bounded by the events.
 """
 function timenormalize(data::AbstractArray{T}, events::AbstractVector{Int}, len::Int=100) where T
     dims = size(data)
+    all(∈(axes(data,1)), events) ||
+        throw(DomainError(events, "all events must be valid indices of `data`"))
     res = Array{T}(undef, (length(events)-1)*len, dims[2:end]...)
 
     fill_normdims!(res, data, events, len)
@@ -74,7 +76,7 @@ function timestoindices(t1::T, t2::T, events, len::Int=100) where T <: Real
     all(t1 .<= events .<= t2) || throw(DomainError("events must be between normalizing events"))
 
     nt = normtime(t1, t2, len)
-    return [ findfirst(≥(ev), nt) for ev in events ]
+    return [ searchsortedfirst(nt, ev) for ev in events ]
 end
 
 """
