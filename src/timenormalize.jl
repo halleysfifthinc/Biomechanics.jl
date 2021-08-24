@@ -108,11 +108,12 @@ end
 
 Calculate the ensemble average and stdev of `data` with a normalized length of `len`
 """
-function limitcycle(data, len::Int=100)
-    mod(size(data,1),len) == 0 ||
+function limitcycle(data, len::Int=100; mean=mean, std=std)
+    N = size(data, 1)
+    mod(N, len) == 0 ||
         throw(ArgumentError("length of data must be even multiple of len"))
 
-    N, wid = size(data)
+    wid = size(data, 2)
     ensemble_avg = similar(data, (len, wid))
     ensemble_std = similar(data, (len, wid))
 
@@ -126,7 +127,7 @@ function limitcycle(data, len::Int=100)
     return (ensemble_avg, ensemble_std)
 end
 
-function limitcycle(data, events::AbstractVector{Int}, len::Int=100)
+function limitcycle(data, events::AbstractVector{Int}, len::Int=100; mean=mean, std=std)
     normed = timenormalize(data, events, len)
-    limitcycle(data, len)
+    limitcycle(normed, len; mean, std)
 end
