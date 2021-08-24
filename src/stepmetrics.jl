@@ -59,7 +59,7 @@ function beginwithevent(fs, events...)
     pred = >(fs[ffs])
     fi = findfirst.(pred, events)
 
-    return (@view(fs[ffs:end]), view.(events, range.(fi, lastindex.(events); step=1))...)
+    return (fs[ffs:end], getindex.(events, range.(fi, lastindex.(events); step=1))...)
 end
 
 """
@@ -67,34 +67,67 @@ end
 
 Calculate left and right step lengths.
 
-If the eltype's of `lfs` or `rfs` are Integers, they are assumed to be already in units of samples.
+If the eltype's of `lfs` or `rfs` are Integers, they are assumed to be already in units of samples/indices.
 
 # Keyword Arguments:
 - `AP=1`: The column for the anteroposterior axis
 - `VT=1`: The column for the vertical axis
 - `fs=1`: The sampling frequency
 """
-function steplength(;lfs, lfo, rfs, rfo, lftpos, rftpos, AP=1, VT=3, fs=1)
+function steplength(;lfs, lfo, rfs, rfo, lftpos, rftpos, AP=1, VT=3, fs=1, requiredsteps=0.9)
     size(lftpos, 1) == size(rftpos, 1) ||
         throw(ArgumentError("left and right foot position data have unequal lengths"))
 
     if eltype(lfs) <: AbstractFloat
-        lfs = round.(Int, lfs .* fs)
+        lfs = toindices(lfs, fs)
     end
     if eltype(lfo) <: AbstractFloat
-        lfo = round.(Int, lfo .* fs)
+        lfo = toindices(lfo, fs)
     end
     if eltype(rfs) <: AbstractFloat
-        rfs = round.(Int, rfs .* fs)
+        rfs = toindices(rfs, fs)
     end
     if eltype(rfo) <: AbstractFloat
-        rfo = round.(Int, rfo .* fs)
+        rfo = toindices(rfo, fs)
     end
 
     max(last(lfs), last(rfs)) ≤ size(lftpos, 1) ||
         throw(ArgumentError("foot strike after the end of foot position data"))
 
-    steplength(lfs, lfo, rfs, rfo; lftpos, rftpos, AP, VT)
+    steplength(lfs, lfo, rfs, rfo; lftpos, rftpos, AP, VT, requiredsteps)
+end
+
+function findfloatingsteps(;lfs, lfo, rfs, rfo)
+    events = sort!([tuple.(:rfs, rfs, axes(rfs,1)); tuple.(:lfs, lfs, axes(lfs,1));
+        tuple.(:lfo, lfo, axes(lfo,1)); tuple.(:rfo, rfo, axes(rfo,1))], by=x->x[2])
+
+    lfloat, rfloat = Int[], Int[]
+    for i in 1:lastindex(events)
+        if events[i][1] ∈ (:rfs, :lfs)
+            opp = events[i][1] === :rfs ? :lfs : :rfs
+            fo = events[i][1] === :rfs ? :lfo : :rfo
+            j = findprev(==(opp)∘first, events, i)
+            if !isnothing(j)
+                if fo ∈ first.(@view(events[j:i]))
+                    if events[i][1] === :rfs
+                        # @show events[i][1], opp, fo, events[j:i]
+                        push!(rfloat, events[i][3])
+                    else
+                        # @show events[i][1], opp, fo, events[j:i]
+                        push!(lfloat, events[i][3])
+                    end
+                end
+            else
+                if events[i][1] === :rfs
+                    push!(rfloat, events[i][3])
+                else
+                    push!(lfloat, events[i][3])
+                end
+            end
+        end
+    end
+
+    lfloat, rfloat
 end
 
 function steplength(
@@ -102,14 +135,19 @@ function steplength(
     lfo::AbstractVector{Int},
     rfs::AbstractVector{Int},
     rfo::AbstractVector{Int};
-    lftpos, rftpos, AP=1, VT=3
+    lftpos, rftpos, AP=1, VT=3, requiredsteps=0.9
 )
     size(lftpos, 1) == size(rftpos, 1) ||
         throw(ArgumentError("left and right foot position data have unequal lengths"))
     max(last(lfs), last(rfs)) ≤ size(lftpos, 1) ||
         throw(ArgumentError("foot strike after the end of foot position data"))
-    any(iszero, doublesupport(;lfs, lfo, rfs, rfo)) &&
-        throw(ArgumentError("running step (double support = 0) encountered. this function only support data from walking"))
+    lfloat, rfloat = findfloatingsteps(;lfs, lfo, rfs, rfo)
+    minlsteps = requiredsteps isa Int ? requiredsteps : round(Int, requiredsteps*length(lfs))
+    minrsteps = requiredsteps isa Int ? requiredsteps : round(Int, requiredsteps*length(rfs))
+    # @show minlsteps minrsteps lfloat rfloat length(lfs) length(rfs)
+    if (length(lfs) - length(lfloat) < minlsteps) | (length(rfs) - length(rfloat) < minrsteps)
+        throw(ArgumentError("number of floating steps exceed limits; try lowering the number of required steps?"))
+    end
 
     if VT === nothing
         slc = [AP]
@@ -117,8 +155,11 @@ function steplength(
         slc = sort([AP,VT])
     end
 
-    rsteps = vec(mapslices(norm, rftpos[rfs, slc] - lftpos[rfs, slc]; dims=2))
-    lsteps = vec(mapslices(norm, lftpos[lfs, slc] - rftpos[lfs, slc]; dims=2))
+    goodrfs = rfs[setdiff(axes(rfs, 1), rfloat)]
+    goodlfs = lfs[setdiff(axes(lfs, 1), lfloat)]
+
+    rsteps = vec(mapslices(norm, rftpos[goodrfs, slc] - lftpos[goodrfs, slc]; dims=2))
+    lsteps = vec(mapslices(norm, lftpos[goodlfs, slc] - rftpos[goodlfs, slc]; dims=2))
 
     return (;lsteps, rsteps)
 end
@@ -127,13 +168,13 @@ function stepwidth(;lfs, rfs, lftpos, rftpos, ML=2, fs=1)
     size(lftpos, 1) == size(rftpos, 1) ||
         throw(ArgumentError("left and right foot position data have unequal lengths"))
 
-    lfs = round.(Int, lfs .* fs)
-    rfs = round.(Int, rfs .* fs)
+    lfs = toindices(lfs, fs)
+    rfs = toindices(rfs, fs)
 
     max(last(lfs), last(rfs)) ≤ size(lftpos, 1) ||
         throw(ArgumentError("foot strike after the end of foot position data"))
 
-    stepwidth(lfs, rfs; lftpos, rftpos, AP, ML)
+    stepwidth(lfs, rfs; lftpos, rftpos, ML)
 end
 
 function stepwidth(lfs::AbstractVector{Int}, rfs::AbstractVector{Int};
@@ -162,7 +203,6 @@ Calculate the left and right step times, where a left step is the left foot-stri
 following a right foot-strike, and vice versa.
 """
 function steptimes(;lfs, rfs)
-    f = findfirst(>(first(lfs)), rfs)
     if first(lfs) > first(rfs)
         lsteps, rsteps = _rotating_diff(rfs, lfs)
     else
