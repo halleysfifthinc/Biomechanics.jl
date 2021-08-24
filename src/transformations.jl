@@ -11,12 +11,27 @@ This method of continuous phase calculation is as recommended by Lamb and Stöck
     approaches and outline for a new standard,” Clinical Biomechanics, vol. 29, no. 5,
     pp. 484–493, May 2014, [doi](https://doi.org/10.1016%2Fj.clinbiomech.2014.03.008).
 """
-function continuousphase(signal, events::AbstractVector{Int})
-    mi, ma = avgextrema(signal, events)
-    signalcent = signal .- Ref(mi - (ma - mi)/2)
+function continuousphase(signal, events::AbstractVector{Int}; centerfun=_center)
+    signalcent = centerfun(signal, events)
     Hsignal = hilbert(signalcent)
 
     return angle.(Hsignal)
+end
+
+function _center(signal, events)
+    mi, ma = avgextrema(signal, events)
+    signal .- Ref(mi + (ma - mi)/2)
+end
+
+function crpensemble(sigA, sigB, events; centerfun=_center)
+    θA = continuousphase(sigA, events; centerfun)
+    θB = continuousphase(sigB, events; centerfun)
+
+    crp = unwrap(θA; range=2pi) - unwrap(θB; range=2pi)
+
+    ens_avg, ens_std = limitcycle(crp, events, mean=circmean, std=circstd)
+
+    return rad2deg.(ens_avg), rad2deg.(ens_std)
 end
 
 """
