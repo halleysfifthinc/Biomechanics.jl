@@ -50,12 +50,12 @@ lds_σ = randn(100) .* .001;
     @test stance(rfs, rfo) ≈ (strides - rswings) ./ strides
 
     @test singlesupport(;lfs, lfo, rfs, rfo, normalize=false) ≈ (lswings + rswings)[1:99]
-    @test doublesupport(;lfs, lfo, rfs, rfo, normalize=false) ≈ (strides - lswings - rswings)[1:99]
+    @test doublesupport(;lfs, lfo, rfs, rfo, normalize=false) ≈ (strides - lswings - rswings)[1:100]
 
     @test singlesupport(;lfs, lfo, rfs, rfo, normalize=true) ≈
         (lswings + rswings)[1:99] ./ strides[1:99]
     @test doublesupport(;lfs, lfo, rfs, rfo, normalize=true) ≈
-        (strides - lswings - rswings)[1:99] ./ strides[1:99]
+        (strides - lswings - rswings)[1:100] ./ strides[1:100]
 end
 
 @testset "Running" begin

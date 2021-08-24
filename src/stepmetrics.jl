@@ -250,17 +250,31 @@ See also: [`swingstance`](@ref), [`swing`](@ref), [`stance`](@ref)
 """
 function doublesupport(;lfs, lfo, rfs, rfo, normalize=true)
     rfs, lfo, lfs, rfo = beginwithevent(rfs, lfo, lfs, rfo)
-    lsteps, rsteps = steptimes(;rfs,lfs)
-    lswings, lstances = swingstance(lfs, lfo; normalize=false)
-    rswings, rstances = swingstance(rfs, rfo; normalize=false)
-    l = minimum(lastindex, (lsteps, rsteps, lswings, lstances, rswings, rstances))
-
-    ds = @. @views ifelse(rstances[1:l] < lsteps[1:l], (0,), lsteps[1:l] - lswings[1:l]) +
-        ifelse(lstances[1:l] < rsteps[1:l], (0,), rsteps[1:l] - rswings[1:l])
+    events = sort!([tuple.(:rfs, rfs); tuple.(:lfs, lfs); tuple.(:lfo, lfo);
+                    tuple.(:rfo, rfo)], by=x->x[2])
+    ds = Float64[]
+    lds = false
+    for i in 1:lastindex(events)-1
+        if events[i][1] === :rfs && events[i+1][1] === :lfo # left double-support (DS)
+            push!(ds, events[i+1][2] - events[i][2])
+            lds = true
+        elseif !isempty(ds) && events[i][1] === :lfs && events[i+1][1] === :rfo # right DS
+            if lds
+                ds[end] += (events[i+1][2] - events[i][2])
+                lds = false
+            else
+                push!(ds, events[i+1][2] - events[i][2])
+                lds = true
+            end
+        elseif events[i+1] === :rfs
+            lds = false
+        end
+    end
 
     if normalize
         strides = stridetimes(rfs)
-        ds = ds ./ strides[1:l]
+        l = min(lastindex(strides), lastindex(ds))
+        ds = ds[1:l] ./ strides[1:l]
     end
 
     return ds
