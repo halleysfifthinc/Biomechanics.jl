@@ -52,6 +52,11 @@ function demean!(x)
     x .-= mean(x)
 end
 
+function _linreg(x::AbstractVector{T}, y::AbstractVector{U}) where {T,U}
+    V = promote_type(T, U)
+    _linreg(convert(Vector{V}, collect(x)), convert(Vector{V}, collect(y)))
+end
+
 # From @dmbates in https://discourse.julialang.org/t/efficient-way-of-doing-linear-regression/31232/28
 function _linreg(x::AbstractVector{T}, y::AbstractVector{T}) where {T<:AbstractFloat}
     (N = length(x)) == length(y) || throw(DimensionMismatch())
