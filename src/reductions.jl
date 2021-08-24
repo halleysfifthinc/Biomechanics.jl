@@ -13,6 +13,20 @@ function circmean(x)
 end
 
 """
+    circmeand(x)
+
+Compute the circular mean of `x` in degrees.
+
+[1] N. I. Fisher, Statistical Analysis of Circular Data. Cambridge University Press, 1993.
+"""
+function circmeand(x)
+    s = mean(sind, x)
+    c = mean(cosd, x)
+
+    atand(s, c)
+end
+
+"""
     circstd(x)
 
 Compute the circular standard deviation of `x` in radians.
@@ -27,12 +41,26 @@ function circstd(x)
 end
 
 """
+    circstdd(x)
+
+Compute the circular standard deviation of `x` in degrees.
+
+[1] N. I. Fisher, Statistical Analysis of Circular Data. Cambridge University Press, 1993.
+"""
+function circstdd(x)
+    s = mean(sind, x)
+    c = mean(cosd, x)
+
+    rad2deg(sqrt(-2*log(hypot(c, s))))
+end
+
+"""
     mean_std_range(x, events) -> Tuple(avg, std)
 
 Find the average range and range variability of `x` for the set of all intervals given by
 `events`.
 """
-function meanrange(x, events::AbstractVector{Int})
+function mean_std_range(x, events::AbstractVector{Int})
     mi, mx = intervalextrema(x, events)
     roms = mx - mi
 
