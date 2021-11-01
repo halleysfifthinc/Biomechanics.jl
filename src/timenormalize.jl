@@ -5,8 +5,9 @@ Normalize the first dimension to lengths of `len` bounded by the events.
 """
 function timenormalize(data::AbstractArray{T}, events::AbstractVector{Int}, len::Int=100) where T
     dims = size(data)
-    all(∈(axes(data,1)), events) ||
-        throw(DomainError(events, "all events must be valid indices of `data`"))
+    oobevents = events .∈ Ref(axes(data,1))
+    any(~, oobevents) &&
+        throw(error("events $(events[.~oobevents]) are not valid indices of `data`"))
     res = Array{T}(undef, (length(events)-1)*len, dims[2:end]...)
 
     fill_normdims!(res, data, events, len)
@@ -87,9 +88,9 @@ Find the equivalent indices for elements in `times` which are between `basetimes
 """
 function timestoindices(basetimes::AbstractVector{T}, times::AbstractVector{T}, len::Int=100) where T
     ntimes = similar(times)
-    for i in 1:(length(nts)-1)
-        rel = findall(x -> nts[i] ≤ x ≤ nts[i+1], times)
-        @views ntimes[rel] .= timestoindices(nts[i], nts[i+1], times[rel], len)
+    for i in 1:(length(basetimes)-1)
+        rel = findall(x -> basetimes[i] ≤ x ≤ basetimes[i+1], times)
+        @views ntimes[rel] .= timestoindices(basetimes[i], basetimes[i+1], times[rel], len)
     end
     return ntimes
 end
