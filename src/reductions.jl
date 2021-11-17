@@ -79,7 +79,7 @@ function avgextrema(x, events::AbstractVector{Int})
 end
 
 function intervalextrema(x::AbstractVector{T}, events) where T
-    rgs = intervals(events; endclosed=false)
+    rgs = intervals(events; endincluded=false)
     mi = Vector{T}(undef, length(rgs))
     mx = Vector{T}(undef, length(rgs))
 

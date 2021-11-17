@@ -1,18 +1,18 @@
 """
-    intervals(a, [b]; endclosed=false, step=one(eltype(a)))
+    intervals(a, [b]; endincluded=false, step=one(eltype(a)))
 
 Return a vector of ranges from `a[i]:step:a[i+1]` or `a[i]:step:b[j]`, if `b` is given.
 
-All ranges returned will have a non-zero length and will not overlap (except by one `step` if endclosed is `true`). Values in `a` and/or `b` will be skipped when required to enforce this behavior.
+All ranges returned will have a non-zero length and will not overlap (except by one `step` if endincluded is `true`). Values in `a` and/or `b` will be skipped when required to enforce this behavior.
 
-If `endclosed == true`, ranges will include the `a[i+1]` or `b[j]` value, otherwise, ranges will end one `step` before that value.
+If `endincluded == true`, ranges will include the `a[i+1]` or `b[j]` value, otherwise, ranges will end one `step` before that value.
 
 """
-function intervals(a::AbstractVector{T}; endclosed=false, step=one(T)) where T
+function intervals(a::AbstractVector{T}; endincluded=false, step=one(T)) where T
     length(a) > 1 || throw(ArgumentError("a is not long enough to create any intervals"))
     ranges = Vector{typeof(first(a):step:a[2])}()
     for i in 1:(length(a)-1)
-        if endclosed
+        if endincluded
             rg = a[i]:step:a[i+1]
         else
             rg = (a[i]:step:a[i+1])[1:end-1]
@@ -24,7 +24,7 @@ function intervals(a::AbstractVector{T}; endclosed=false, step=one(T)) where T
 end
 
 function intervals(
-    a::AbstractVector{T}, b::AbstractVector{T}; endclosed=false, step=one(T)
+    a::AbstractVector{T}, b::AbstractVector{T}; endincluded=false, step=one(T)
 ) where T
     ranges = Vector{typeof(first(a):step:first(b))}()
 
@@ -35,7 +35,12 @@ function intervals(
     while bi < lastindex(b) && ai < lastindex(a)
         bi = searchsortedfirst(b, a[ai], bi, lastindex(b), Base.Order.Forward)
         ai = searchsortedlast(a, b[bi], ai, lastindex(a), Base.Order.Forward)
-        push!(ranges, a[ai]:step:b[bi])
+        if endincluded
+            rg = a[ai]:step:a[bi]
+        else
+            rg = (a[ai]:step:a[bi])[1:end-1]
+        end
+        push!(ranges, rg)
 
         bi += 1
         ai += 1
