@@ -202,12 +202,15 @@ stridetimes(fs) = diff(fs)
 Calculate the left and right step times, where a left step is the left foot-strike
 following a right foot-strike, and vice versa.
 """
-function steptimes(;lfs, rfs)
+function steptimes(;lfs, rfs, fs=1)
     if first(lfs) > first(rfs)
         lsteps, rsteps = _rotating_diff(rfs, lfs)
     else
         rsteps, lsteps = _rotating_diff(lfs, rfs)
     end
+
+    lsteps ./= fs
+    rsteps ./= fs
 
     return (;lsteps, rsteps)
 end
