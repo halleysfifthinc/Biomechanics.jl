@@ -36,9 +36,9 @@ function intervals(
         bi = searchsortedfirst(b, a[ai], bi, lastindex(b), Base.Order.Forward)
         ai = searchsortedlast(a, b[bi], ai, lastindex(a), Base.Order.Forward)
         if endincluded
-            rg = a[ai]:step:a[bi]
+            rg = a[ai]:step:b[bi]
         else
-            rg = (a[ai]:step:a[bi])[1:end-1]
+            rg = (a[ai]:step:b[bi])[1:end-1]
         end
         push!(ranges, rg)
 
