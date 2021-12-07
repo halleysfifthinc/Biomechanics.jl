@@ -45,7 +45,7 @@ function phase_coordination_index(;lfs, rfs, lfo, rfo)
     resize!(tₗ, min(length(tₗ), length(tₛ)))
     resize!(tₛ, min(length(tₗ), length(tₛ)))
 
-    φ = 360 .* (tₛ[1:end-1] .- tₗ[1:end-1])/stridetimes(tₗ)
+    φ = 360 .* (tₛ[1:end-1] .- tₗ[1:end-1])./stridetimes(tₗ)
     φ_ABS = mean(abs, φ .- 180)
     Pφ_ABS = (φ_ABS/180)*100
     φ_CV = variation(φ)*100
