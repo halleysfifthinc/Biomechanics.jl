@@ -1,7 +1,7 @@
 name = "Biomechanics"
 uuid = "6f07b801-2c6f-57cd-b605-0571f3a6b84e"
 authors = ["Allen Hill <allenofthehills@gmail.com>"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
