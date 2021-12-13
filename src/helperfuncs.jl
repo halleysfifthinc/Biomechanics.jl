@@ -1,6 +1,6 @@
 function rmsd_simd(a, b)
     N = length(a)
-    N === length(b) || throw(DimensionMismatch())
+    N === length(b) || throw(DimensionMismatch("axes(a)==($(axes(a))) != axes(b)==($(axes(b)))"))
     err = zero(promote_type(eltype(a), eltype(b)))
     @turbo for i ∈ eachindex(a,b)
         err += abs2(a[i] - b[i])
