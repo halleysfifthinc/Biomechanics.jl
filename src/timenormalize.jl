@@ -1,40 +1,54 @@
 """
-    timenormalize(data, events::AbstractVector{Int}[, len=100])
+    timenormalize(data, events::Vector{Int}, [len=100])
+    timenormalize(data, intervals::Vector{<:AbstractRange{Int}}, [len=100])
 
 Normalize the first dimension to lengths of `len` bounded by the events.
 """
-function timenormalize(data::AbstractArray{T}, events::AbstractVector{Int}, len::Int=100) where T
+function timenormalize(data::AbstractArray{T}, events, len::Int=100) where T
     dims = size(data)
     oobevents = events .∈ Ref(axes(data,1))
     any(~, oobevents) &&
         throw(error("events $(events[.~oobevents]) are not valid indices of `data`"))
     res = Array{T}(undef, (length(events)-1)*len, dims[2:end]...)
 
-    fill_normdims!(res, data, events, len)
+    fill_normdims!(res, data, intervals(events), len)
 
     return res
 end
 
-function fill_normdims!(res, data, events::AbstractVector{Int}, len::Int=100)
+⊂ = issubset
+function timenormalize(data::AbstractArray{T}, intvls::Vector{<:AbstractRange{Int}}, len::Int=100) where T
+    dims = size(data)
+    oobevents = intvls .⊂ Ref(axes(data,1))
+    any(~, oobevents) &&
+        throw(error("intervals $(intvls[.~oobevents]) are not valid indices of `data`"))
+    res = Array{T}(undef, length(intvls)*len, dims[2:end]...)
+
+    fill_normdims!(res, data, intvls, len)
+
+    return res
+end
+
+function fill_normdims!(res, data, intvls, len::Int=100)
     (size(res,2) != size(data,2)) && throw(
         ArgumentError("`res` and `data` must have the same number of columns"))
     for i in 1:size(data,2)
         # Create interpolation object
         itp = interpolate(@view(data[:,i]), BSpline(Cubic(Line(Interpolations.OnGrid()))))
 
-        fill_normstrides!(@view(res[:,i]), itp, events, len)
+        fill_normstrides!(@view(res[:,i]), itp, intvls, len)
     end
 
     nothing
 end
 
-function fill_normstrides!(nstr, str, events::AbstractVector{Int}, len::Int=100)
+function fill_normstrides!(nstr, str, intvls::Vector{<:AbstractRange{Int}}, len::Int=100)
     @assert mod(size(nstr,1),len) === 0
-    @assert size(nstr,1) === (length(events)-1)*len
+    @assert size(nstr,1) === length(intvls)*len
 
     # Create time normalized strides
-    @inbounds for s in 1:length(events)-1
-        nstr[(1:len).+(s-1)*len] = str(normtime(events[s], events[s+1], len))
+    @inbounds for s in eachindex(intvls)
+        nstr[(1:len).+(s-1)*len] = str(normtime(intvls[s], len))
     end
 
     nothing
@@ -106,6 +120,10 @@ function normtime(t1, t2, len::Int=100)
     range(t1, stop=t2, length=len+1)[1:len]
 end
 
+function normtime(rg, len::Int=100)
+    range(rg.start, stop=rg.stop, length=len+1)[1:len]
+end
+
 """
     limitcycle(data, [events::AbstractVector{Int}, len=100])
 
@@ -127,10 +145,10 @@ function limitcycle(data, len::Int=100; mean=mean, std=std)
         end
     end
 
-    return (ensemble_avg, ensemble_std)
+    return (vec(ensemble_avg), vec(ensemble_std))
 end
 
-function limitcycle(data, events::AbstractVector{Int}, len::Int=100; mean=mean, std=std)
+function limitcycle(data, events, len::Int=100; mean=mean, std=std)
     normed = timenormalize(data, events, len)
     limitcycle(normed, len; mean, std)
 end
