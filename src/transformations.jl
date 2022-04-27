@@ -20,14 +20,24 @@ end
 
 function _center(signal, events)
     mi, ma = avgextrema(signal, events)
-    signal .- Ref(mi + (ma - mi)/2)
+    return signal .- Ref(mi + (ma - mi)/2)
 end
 
-function crpensemble(sigA, sigB, events; centerfun=_center)
+function _centerd(signal, events)
+    mi, ma = intervalextrema(signal, events)
+    mi_μ, ma_μ = circmeand(mi), circmeand(ma)
+    return signal .- Ref(mi_μ + (ma_μ - mi_μ)/2)
+end
+
+function relativephase(sigA, sigB, events; centerfun=_center)
     θA = continuousphase(sigA, events; centerfun)
     θB = continuousphase(sigB, events; centerfun)
 
-    crp = unwrap(θA; range=2pi) - unwrap(θB; range=2pi)
+    return unwrap(θA; range=2pi) - unwrap(θB; range=2pi)
+end
+
+function crpensemble(sigA, sigB, events; centerfun=_center)
+    crp = relativephase(sigA, sigB, events; centerfun)
 
     ens_avg, ens_std = limitcycle(crp, events, mean=circmean, std=circstd)
 
