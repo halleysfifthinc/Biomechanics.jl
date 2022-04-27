@@ -52,3 +52,17 @@ function matchevents(pred::AbstractVector, act::AbstractVector; Tthresh=0.5*medi
     return setdiff(eachindex(pred), delidxs), idxs, dists, missed
 end
 
+function roerdink2008(; lheel, rheel, fs, fc_minprom=30, fo_minprom=1200)
+    lfcpred, _ = peakproms!(argminima(lheel, 10), lheel; minprom=fc_minprom)
+    rfcpred, _ = peakproms!(argminima(rheel, 10), rheel; minprom=fc_minprom)
+
+    lheel_vel = centraldiff(lheel; dt=inv(fs), padding=ForwardBackwardPad())
+    rheel_vel = centraldiff(rheel; dt=inv(fs), padding=ForwardBackwardPad())
+
+    lfopred, _ = peakproms!(argmaxima(lheel_vel, 10), lheel_vel; minprom=fo_minprom)
+    rfopred, _ = peakproms!(argmaxima(rheel_vel, 10), rheel_vel; minprom=fo_minprom)
+
+    return (;lfs=totimes(lfcpred, fs), rfs=totimes(rfcpred, fs),
+             lfo=totimes(lfopred, fs), rfo=totimes(rfopred, fs))
+end
+
