@@ -33,14 +33,18 @@ function margin_of_stability(com, lbos, rbos, levents, revents; axis=1)
     return lmos_ev, rmos_ev, [lmos_ev; rmos_ev][sp]
 end
 
-function phase_coordination_index(;lfs, rfs, lfo, rfo)
+function phase_coordination_index(;lfs, rfs, lfo=nothing, rfo=nothing)
     lswing = mean(swing(lfs, lfo))
     rswing = mean(swing(rfs, rfo))
 
-    if lswing < rswing
+    if isnothing(lfo) || isnothing(rfo)
         tₗ, tₛ = beginwithevent(rfs, lfs)
     else
-        tₗ, tₛ = beginwithevent(lfs, rfs)
+        if lswing < rswing
+            tₗ, tₛ = beginwithevent(rfs, lfs)
+        else
+            tₗ, tₛ = beginwithevent(lfs, rfs)
+        end
     end
     resize!(tₗ, min(length(tₗ), length(tₛ)))
     resize!(tₛ, min(length(tₗ), length(tₛ)))
