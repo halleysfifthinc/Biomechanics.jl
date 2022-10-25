@@ -164,7 +164,7 @@ end
     last = lastindex(x) - 2
     @boundscheck (start, last) == (firstindex(x′), lastindex(x′)) || throw(BoundsError())
 
-    @inbounds @simd ivdep for i in start:last
+    @turbo for i in start:last
         x′[i] = (x[i+2] - x[i]) / 2dt
     end
 
@@ -176,7 +176,7 @@ end
     last = lastindex(x) - 2
     @boundscheck (start, last) == (firstindex(x′), lastindex(x′)) || throw(BoundsError())
 
-    @inbounds @simd ivdep for i in start:last
+    @turbo for i in start:last
         x′[i] = (x[i+2] - 2x[i+1] + x[i]) / dt^2
     end
 
