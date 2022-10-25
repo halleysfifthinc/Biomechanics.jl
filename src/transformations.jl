@@ -79,7 +79,7 @@ end
 Remove the linear trend from `y`
 """
 function detrend(y)
-    β = linreg(1:length(y),y)
+    β = _linreg(1:length(y),y)
     @. return y - (β[1] + β[2]*y)
 end
 
@@ -89,7 +89,7 @@ end
 Mutate `y` by removing its linear trend
 """
 function detrend!(y)
-    a, b = linreg(1:length(y),y)
+    β = _linreg(1:length(y),y)
     @. y -= β[1] + β[2]*y
 end
 
