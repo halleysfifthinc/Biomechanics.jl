@@ -32,8 +32,8 @@ function matchevents(pred::AbstractVector, act::AbstractVector; Tthresh=0.5*medi
     missed = max(0, length(act) - length(pred))
 
     _pred = copy(pred)
-    tree = KDTree(reshape(act, 1, length(act)), Chebyshev())
-    idxs, dists = nn(tree, reshape(pred, 1, length(pred)))
+    tree = KDTree(reshape(act, 1, :), Chebyshev())
+    idxs, dists = nn(tree, reshape(pred, 1, :))
 
     dups = findduplicates(idxs)
     delidxs = Int[]
