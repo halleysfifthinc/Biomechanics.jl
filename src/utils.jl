@@ -1,23 +1,40 @@
 """
     intervals(a, [b]; endincluded=false, step=one(eltype(a)))
 
-Return a vector of ranges from `a[i]:step:a[i+1]` or `a[i]:step:b[j]`, if `b` is given.
+Return a vector of ranges from `a[i]:a[i+1]` or `a[i]:b[j]`, if `b` is given.
 
 All ranges returned will have a non-zero length and will not overlap (except by one `step` if endincluded is `true`). Values in `a` and/or `b` will be skipped when required to enforce this behavior.
 
 If `endincluded == true`, ranges will include the `a[i+1]` or `b[j]` value, otherwise, ranges will end one `step` before that value.
+If `step == nothing`, no step will be specified, and `UnitRanges` will be returned.
 
 """
 function intervals(a::AbstractVector{T}; endincluded=false, step=one(T)) where T
     length(a) > 1 || throw(ArgumentError("a is not long enough to create any intervals"))
-    ranges = Vector{typeof(first(a):step:a[2])}()
-    for i in 1:(length(a)-1)
-        if endincluded
-            rg = a[i]:step:a[i+1]
-        else
-            rg = (a[i]:step:a[i+1])[1:end-1]
+    if isnothing(step)
+        ranges = Vector{typeof(first(a):a[2])}()
+    else
+        ranges = Vector{typeof(first(a):step:a[2])}()
+    end
+
+    if isnothing(step)
+        for i in 1:(length(a)-1)
+            if endincluded
+                rg = a[i]:a[i+1]
+            else
+                rg = (a[i]:a[i+1])[1:end-1]
+            end
+            push!(ranges, rg)
         end
-        push!(ranges, rg)
+    else
+        for i in 1:(length(a)-1)
+            if endincluded
+                rg = a[i]:step:a[i+1]
+            else
+                rg = (a[i]:step:a[i+1])[1:end-1]
+            end
+            push!(ranges, rg)
+        end
     end
 
     return ranges
@@ -26,24 +43,45 @@ end
 function intervals(
     a::AbstractVector{T}, b::AbstractVector{T}; endincluded=false, step=one(T)
 ) where T
-    ranges = Vector{typeof(first(a):step:first(b))}()
+    if isnothing(step)
+        ranges = Vector{typeof(first(a):first(b))}()
+    else
+        ranges = Vector{typeof(first(a):step:first(b))}()
+    end
 
     firstbi = searchsortedfirst(b, first(a))
 
     bi = firstbi
     ai = firstindex(a)
-    while bi < lastindex(b) && ai < lastindex(a)
-        bi = searchsortedfirst(b, a[ai], bi, lastindex(b), Base.Order.Forward)
-        ai = searchsortedlast(a, b[bi], ai, lastindex(a), Base.Order.Forward)
-        if endincluded
-            rg = a[ai]:step:b[bi]
-        else
-            rg = (a[ai]:step:b[bi])[1:end-1]
-        end
-        push!(ranges, rg)
 
-        bi += 1
-        ai += 1
+    if isnothing(step)
+        while bi < lastindex(b) && ai < lastindex(a)
+            bi = searchsortedfirst(b, a[ai], bi, lastindex(b), Base.Order.Forward)
+            ai = searchsortedlast(a, b[bi], ai, lastindex(a), Base.Order.Forward)
+            if endincluded
+                rg = a[ai]:b[bi]
+            else
+                rg = (a[ai]:b[bi])[1:end-1]
+            end
+            push!(ranges, rg)
+
+            bi += 1
+            ai += 1
+        end
+    else
+        while bi < lastindex(b) && ai < lastindex(a)
+            bi = searchsortedfirst(b, a[ai], bi, lastindex(b), Base.Order.Forward)
+            ai = searchsortedlast(a, b[bi], ai, lastindex(a), Base.Order.Forward)
+            if endincluded
+                rg = a[ai]:step:b[bi]
+            else
+                rg = (a[ai]:step:b[bi])[1:end-1]
+            end
+            push!(ranges, rg)
+
+            bi += 1
+            ai += 1
+        end
     end
 
     return ranges
@@ -72,6 +110,7 @@ function _rotating_diff(vectors::Vararg{<:AbstractVector{T},N};
     return diffed
 end
 
+# interleave(vecs...) = mapreduce(collect, vcat, zip(vecs...))
 function interleave(vectors::Vararg{<:AbstractVector{T},N}) where {T,N}
     minlen = minimum(length.(vectors))
     arr = Vector{T}(undef, N*minlen)
