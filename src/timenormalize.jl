@@ -57,56 +57,95 @@ end
 """
     timestoindices(t1::Real, t2::Real, times[, len=100])
 
-Find the equivalent indices for `times` when the times `t1` and `t2` match the `begin` and
-`end + 1` of an array of length `len`.
+Find the equivalent indices for `times` in a range `[t1,t2)` of length `len`.
 
-This is useful when an array has been timenormalized using `basetimes` as the normalizing events, but when the location of `times` in the normalized array is also needed.
+Equivalent indices are calculated as the index of the first element (in `[t1,t2)`) with a
+value greater than or after the corresponding value in `times`.
+
+This is useful when an array has been timenormalized using one set of events for
+normalizing, but another set of events needs to be used in indexing into the timenormalized
+array.
 
 # Examples
 ```jldoctest
-julia> normedarray = timenormalize(collect(.01:.01:3), [132, 246])
+julia> normedarray = collect(normtime(1.32, 2.46, 100))
 100-element Vector{Float64}:
  1.32
  1.3314
  1.3428
- 1.3541999999999996
+ 1.3542
 [...]
 
-julia> times = [1.56, 2.0]
-2-element Vector{Float64}:
- 1.56
- 2.0
+julia> times = [1.56, 2.0];
 
 julia> idx = timestoindices(1.32, 2.46, times)
 2-element Vector{Int64}:
  23
  61
 
-julia> isapprox(normedarray[idx], times; atol=.02)
-true
+julia> normedarray[idx]
+2-element Vector{Float64}:
+ 1.5708
+ 2.004
+
 ```
 """
 function timestoindices(t1::T, t2::T, events, len::Int=100) where T <: Real
     t1 < t2 || throw(DomainError("t1 must be less than t2"))
+    isempty(events) && return Int[]
     all(t1 .<= events .<= t2) || throw(DomainError("events must be between normalizing events"))
 
     nt = normtime(t1, t2, len)
-    return [ searchsortedfirst(nt, ev) for ev in events ]
+    return Int[ searchsortedfirst(nt, ev) for ev in events ]
 end
 
 """
     timestoindices(basetimes::AbstractVector{<:Real}, times[, len=100])
 
-Find the equivalent indices for elements in `times` which are between `basetimes[i]` and
-`basetimes[i+1]` which match the `begin` and `end + 1` of an array of length `len` for all successive pairs in `basetimes`.
+Find the equivalent indices for elements in `times` which are in a range `[t1,t2)` of length
+`len`, where `t1` and `t2` are `basetimes[i]` and `basetimes[i+1]`, for all successive pairs
+in `basetimes`.
+
+Equivalent indices are calculated as the index of the first element (in `[t1,t2)`) with a
+value greater than or after the corresponding value in `times`.
+
+# Examples
+```jldoctest
+julia> normedarray = collect(normtime(1.32, 2.46, 100))
+100-element Vector{Float64}:
+ 1.32
+ 1.3314
+ 1.3428
+ 1.3542
+[...]
+
+julia> times = [1.56, 2.0];
+
+julia> idx = timestoindices([1.32, 2.46], times)
+2-element Vector{Int64}:
+ 23
+ 61
+
+julia> normedarray[idx]
+2-element Vector{Float64}:
+ 1.5708
+ 2.004
+
+```
 """
-function timestoindices(basetimes::AbstractVector{T}, times::AbstractVector{T}, len::Int=100) where T
-    ntimes = similar(times)
+function timestoindices(
+    basetimes::AbstractVector{T}, times::AbstractVector{T}, len::Int=100
+) where T
+    ntimes = similar(times, Int)
+    perm = sortperm(times)
+    stimes = permute!(copy(times), perm)
     for i in 1:(length(basetimes)-1)
-        rel = findall(x -> basetimes[i] ≤ x ≤ basetimes[i+1], times)
-        @views ntimes[rel] .= timestoindices(basetimes[i], basetimes[i+1], times[rel], len)
+        f = searchsortedfirst(stimes, basetimes[i])
+        l = searchsortedlast(stimes, basetimes[i+1])
+        @views ntimes[f:l] .= timestoindices(basetimes[i], basetimes[i+1], stimes[f:l], len)
     end
-    return ntimes
+
+    return invpermute!(ntimes, perm)
 end
 
 """
