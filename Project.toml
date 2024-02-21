@@ -1,7 +1,7 @@
 name = "Biomechanics"
 uuid = "6f07b801-2c6f-57cd-b605-0571f3a6b84e"
 authors = ["Allen Hill <allenofthehills@gmail.com>"]
-version = "0.4.0"
+version = "0.4.0-DEV"
 
 [deps]
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
@@ -18,12 +18,11 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [compat]
 DSP = "0.6,0.7"
 Distances = "0.10"
-Interpolations = "0.13"
-LoopVectorization = "0.12"
+Interpolations = "0.13,0.14"
 NearestNeighbors = "0.4"
 Peaks = "0.4"
-Reexport = "1"
-StatsBase = "0.33"
+Reexport = "0.2, 1"
+StatsBase = "0.33, 0.34"
 julia = "1.6"
 
 [extras]

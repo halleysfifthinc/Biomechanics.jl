@@ -54,6 +54,15 @@ function fill_normstrides!(nstr, str, intvls::Vector{<:AbstractRange{Int}}, len:
     nothing
 end
 
+function time_denormalize(data, events, len::Int=100; fs)
+    @views normed_time = mapreduce((a,b) -> normtime(a,b,len), vcat,
+        events[begin:end-1], events[begin+1:end])
+    interp = linear_interpolation(normed_time, data)
+    denormed_time = first(events):inv(fs):last(normed_time)
+
+    return interp.(denormed_time)
+end
+
 """
     timestoindices(t1::Real, t2::Real, times[, len=100])
 
@@ -146,6 +155,77 @@ function timestoindices(
     end
 
     return invpermute!(ntimes, perm)
+end
+
+export timeintervals_toindices
+"""
+    timeintervals_toindices(t1::Real, t2::Real, ranges[, len=100])
+
+Find the equivalent ranges of indices in a range `[t1,t2)` of length `len` for each range in
+`ranges` which overlap `[t1,t2)`. Only the indices for the overlapping portion will be
+returned for a range which only partially overlaps `[t1,t2)`.
+
+(Equivalent to `timestoindices`, but for ranges instead of scalars.)
+
+See also: [`timestoindices`](@ref)
+
+# Examples
+```jldoctest
+julia> normedarray = collect(normtime(1.32, 2.46, 100))
+100-element Vector{Float64}:
+ 1.32
+ 1.3314
+ 1.3428
+ 1.3542
+[...]
+
+julia> times = [1.56, 2.0];
+
+julia> idx = timeintervals_toindices(1.32, 2.46, 1.56:2.0)
+2-element Vector{Int64}:
+ 23
+ 61
+
+julia> normedarray[idx]
+2-element Vector{Float64}:
+ 1.5708
+ 2.004
+
+```
+"""
+function timeintervals_toindices(
+    t1::T, t2::T, ranges::Vector{<:AbstractRange}, len::Int=100
+) where T
+    t1 < t2 || throw(DomainError("t1 must be less than t2"))
+    ranges = sort(ranges)
+
+    nt = normtime(t2, t2, len)
+    return [
+        searchsortedfirst(nt, first(ev)):searchsortedlast(nt, last(ev))
+            for ev in ranges
+        ]
+end
+
+function timeintervals_toindices(
+    t1::T, t2::T, rg::AbstractRange, len::Int=100
+) where T
+    return timeintervals_toindices(t1, t2, [rg], len)
+end
+
+function timeintervals_toindices(basetimes::Vector{T}, events::Vector{<:AbstractRange}, len::Int=100) where T
+    timeintervals_toindices(intervals(basetimes; endincluded=true, step=nothing), events, len)
+end
+
+function timeintervals_toindices(baseranges::Vector{<:AbstractRange}, events::Vector{<:AbstractRange}, len::Int=100)
+    events = sort(events)
+
+    ntimes = UnitRange[]
+    for baserange in baseranges
+        overlapped = findall(ev -> !isdisjoint(baserange, ev), events)
+        append!(ntimes, timeintervals_toindices(first(baserange), last(baserange), events[overlapped], len))
+    end
+
+    return ntimes
 end
 
 """

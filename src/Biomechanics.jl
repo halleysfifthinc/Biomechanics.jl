@@ -1,7 +1,7 @@
 module Biomechanics
 
 using Reexport, DSP, Interpolations, Statistics, StatsBase, LinearAlgebra, NearestNeighbors,
-    Distances, LoopVectorization
+    Distances, LoopVectorization, Peaks
 
 # utils.jl
 export intervals
@@ -10,11 +10,13 @@ export intervals
 export circmean, circmeand, circstd, circstdd, mean_std_range, avgextrema, intervalextrema
 
 # transformations.jl
-export continuousphase, crpensemble, demean, demean!, detrend, detrend!, centraldiff
+export continuousphase, relativephase, crpensemble, demean, demean!, detrend, detrend!,
+    centraldiff
 export ForwardBackwardPad
 
 # timenormalize.jl
-export timenormalize, timestoindices, normtime, limitcycle
+export timenormalize, timestoindices, normtime, limitcycle, timeintervals_toindices,
+    time_denormalize
 
 # gaitevents.jl
 export matchevents, toindices, totimes
